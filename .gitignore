@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+
+# Environment Variables
+.env
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# Media
+videos/*
+uploads/*
+recordings/*
+!videos/.gitkeep
+!uploads/.gitkeep
+!recordings/.gitkeep
+
+# Certificates
+certificates/*.pem
+certificates/*.key
+
+# Python Cache
+.pytest_cache/
+.mypy_cache/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Linux
+*~
+
+# Docker
+*.pid
