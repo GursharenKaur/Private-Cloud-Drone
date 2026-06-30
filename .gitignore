@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *.so
+*.pyo
+*.pyd
 .venv/
 venv/
 env/
@@ -12,7 +14,8 @@ env/
 # Logs
 logs/*
 !logs/.gitkeep
-
+logs/
+*.log
 # Media
 videos/*
 uploads/*
@@ -25,6 +28,22 @@ recordings/*
 certificates/*.pem
 certificates/*.key
 
+
+# Database
+database/
+
+# Uploads
+uploads/
+videos/
+recordings/
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
 # Python Cache
 .pytest_cache/
 .mypy_cache/

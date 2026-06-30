@@ -1,20 +1,20 @@
 from fastapi import FastAPI
 
+from app.api.health import router as health_router
+from app.core.config import settings
+
 app = FastAPI(
-    title="Drone Cloud Project",
-    description="Secure Private Cloud for Live Video Transmission",
-    version="1.0.0"
+    title=settings.PROJECT_NAME,
+    version=settings.API_VERSION
 )
 
+app.include_router(health_router)
+
+
 @app.get("/")
-async def root():
+def root():
     return {
         "message": "Drone Cloud Project Backend Running",
-        "status": "OK"
-    }
-
-@app.get("/health")
-async def health():
-    return {
-        "status": "healthy"
+        "project": settings.PROJECT_NAME,
+        "version": settings.API_VERSION,
     }
