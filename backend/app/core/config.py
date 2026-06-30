@@ -1,7 +1,17 @@
-from pydantic_settings import BaseSettings
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Project root = DroneCloudProject/
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=PROJECT_ROOT / ".env",
+        extra="ignore",
+    )
+
     PROJECT_NAME: str = "DroneCloudProject"
     API_VERSION: str = "v1"
 
@@ -13,9 +23,9 @@ class Settings(BaseSettings):
     DB_PORT: int
 
     # Security
-    SECRET_KEY: str = "ChangeThisToAVeryLongRandomSecretKey"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
 
     # Storage
     UPLOAD_DIR: str = "/app/uploads"
@@ -24,15 +34,12 @@ class Settings(BaseSettings):
     LOG_DIR: str = "/app/logs"
 
     @property
-    def DATABASE_URL(self):
+    def DATABASE_URL(self) -> str:
         return (
             f"postgresql+psycopg://"
             f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.POSTGRES_DB}"
         )
-
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings()
