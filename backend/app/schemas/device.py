@@ -1,22 +1,20 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
-class DeviceBase(BaseModel):
+class DeviceCreate(BaseModel):
     device_name: str
     device_type: str
     serial_number: str
 
-
-class DeviceCreate(DeviceBase):
-    pass
-
-
-class DeviceResponse(DeviceBase):
+class DeviceResponse(BaseModel):
     id: int
+    device_name: str
+    device_type: str
+    serial_number: str
     status: str
     last_seen: datetime
 
-    model_config = ConfigDict(from_attributes=True)
-
+    class Config:
+        from_attributes = True
