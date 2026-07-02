@@ -1,666 +1,182 @@
 # Phase 2 Documentation
-# DroneCloud Backend Development – Telemetry Management API
 
-**Phase:** 2 – Telemetry Management API  
-**Framework:** FastAPI  
-**Database:** PostgreSQL  
-**ORM:** SQLAlchemy  
-**Authentication:** JWT Authentication  
+## Overview
+
+Phase 2 focused on developing the backend REST APIs for the DroneCloud application. The primary objective was to build secure APIs for user management, device management, and telemetry management using FastAPI, SQLAlchemy, and PostgreSQL. All protected endpoints require JWT-based authentication.
 
 ---
 
-# 1. Objective
-
-The objective of Phase 2 was to develop a complete Telemetry Management API for the DroneCloud backend.
-
-The telemetry module allows authenticated users to:
-
-- Upload telemetry data
-- View all telemetry
-- View telemetry for a specific drone
-- Retrieve the latest telemetry
-- Update telemetry
-- Delete telemetry
-
-All endpoints are protected using JWT authentication.
-
----
-
-# 2. Technologies Used
+# Technology Stack
 
 - Python 3.12
 - FastAPI
 - SQLAlchemy
 - PostgreSQL
-- Docker
-- Docker Compose
-- Swagger UI
-- JWT Authentication
+- Docker & Docker Compose
 - Pydantic
+- JWT Authentication
+- Swagger UI
 
 ---
 
-# 3. Folder Structure
+# Modules Implemented
 
-```
-backend/
-│
-├── app/
-│   ├── api/
-│   │   └── v1/
-│   │       └── telemetry.py
-│   │
-│   ├── crud/
-│   │       └── telemetry.py
-│   │
-│   ├── models/
-│   │       └── telemetry.py
-│   │
-│   ├── schemas/
-│   │       └── telemetry.py
-│   │
-│   └── database.py
-│
-├── Dockerfile
-└── requirements.txt
-```
+## 1. Authentication Module
+
+Responsible for authenticating users and generating JWT access tokens.
+
+### APIs
+
+| Method | Endpoint | Role |
+|---------|----------|------|
+| POST | `/auth/login` | Authenticates a user and returns a JWT access token. |
+
+**Database Interaction**
+
+- Reads user credentials from the `users` table.
+- Verifies the hashed password.
+- Generates a JWT token for authenticated requests.
 
 ---
 
-# 4. Database Schema
+## 2. User Management Module
 
-Initially the telemetry table contained:
+Responsible for managing user information and profile access.
 
-| Column |
-|----------|
-| id |
-| latitude |
-| longitude |
-| altitude |
-| speed |
-| heading |
-| battery |
-| timestamp |
+### APIs
 
-During development, two additional columns became necessary:
+| Method | Endpoint | Role |
+|---------|----------|------|
+| GET | `/users/` | Retrieves all registered users. |
+| POST | `/users/` | Creates a new user account. |
+| GET | `/users/me` | Returns the currently authenticated user's profile. |
+| GET | `/users/admin` | Returns the admin dashboard information (Admin only). |
 
-```
-device_id
-battery_level
-```
+**Database Interaction**
 
-Final schema:
-
-| Column | Type |
-|---------|------|
-| id | Integer |
-| device_id | Integer |
-| latitude | Float |
-| longitude | Float |
-| altitude | Float |
-| speed | Float |
-| heading | Float |
-| battery | Integer |
-| battery_level | Integer |
-| timestamp | Timestamp |
+- Inserts new records into the `users` table.
+- Retrieves user records.
+- Validates user roles before granting admin access.
 
 ---
 
-# 5. APIs Implemented
+## 3. Device Management Module
+
+Responsible for maintaining all registered drones/devices.
+
+### APIs
+
+| Method | Endpoint | Role |
+|---------|----------|------|
+| GET | `/devices/` | Retrieves all registered devices. |
+| POST | `/devices/` | Registers a new device. |
+| GET | `/devices/{device_id}` | Retrieves details of a specific device. |
+| DELETE | `/devices/{device_id}` | Deletes a device from the database. |
+| PATCH | `/devices/{device_id}/status` | Updates the operational status of a device. |
+| GET | `/devices/stats` | Returns overall device statistics. |
+
+**Database Interaction**
+
+- Inserts new devices into the `devices` table.
+- Reads device information.
+- Updates device status.
+- Deletes device records.
+- Generates statistics using existing device records.
 
 ---
 
-## 5.1 Create Telemetry
+## 4. Telemetry Management Module
 
-### Endpoint
+Responsible for storing and managing telemetry received from drones.
 
-```
-POST /telemetry/
-```
+### APIs
 
-### Purpose
+| Method | Endpoint | Role |
+|---------|----------|------|
+| GET | `/telemetry/` | Retrieves all telemetry records. |
+| POST | `/telemetry/` | Stores new telemetry received from a drone. |
+| GET | `/telemetry/device/{device_id}` | Retrieves all telemetry records for a specific device. |
+| GET | `/telemetry/device/{device_id}/latest` | Retrieves the latest telemetry record of a device. |
+| PUT | `/telemetry/{telemetry_id}` | Updates an existing telemetry record. |
+| DELETE | `/telemetry/{telemetry_id}` | Deletes a telemetry record. |
 
-Stores telemetry received from a drone.
+**Database Interaction**
 
-### Request Body
-
-```json
-{
-    "device_id":3,
-    "latitude":31.634,
-    "longitude":74.872,
-    "altitude":120.5,
-    "battery_level":85
-}
-```
-
-### Response
-
-```json
-{
-    "id":1,
-    "device_id":3,
-    "latitude":31.634,
-    "longitude":74.872,
-    "altitude":120.5,
-    "battery_level":85,
-    "timestamp":"..."
-}
-```
+- Inserts telemetry into the `telemetry` table.
+- Retrieves telemetry based on device ID.
+- Retrieves the latest telemetry using timestamp ordering.
+- Updates telemetry values.
+- Deletes telemetry records.
 
 ---
 
-## 5.2 Get All Telemetry
+## 5. System APIs
 
-### Endpoint
+These APIs are used for application monitoring.
 
-```
-GET /telemetry/
-```
+### APIs
 
-### Purpose
+| Method | Endpoint | Role |
+|---------|----------|------|
+| GET | `/` | Root endpoint to verify API availability. |
+| GET | `/health` | Returns the health status of the backend service. |
 
-Returns every telemetry record stored in the database.
+**Database Interaction**
 
----
-
-## 5.3 Get Latest Telemetry
-
-### Endpoint
-
-```
-GET /telemetry/device/{device_id}/latest
-```
-
-### Purpose
-
-Returns the newest telemetry entry for a particular drone.
-
-Example:
-
-```
-GET /telemetry/device/3/latest
-```
+- No database interaction.
+- Used only for service availability checks.
 
 ---
 
-## 5.4 Get Device Telemetry
+# Database Tables Used
 
-### Endpoint
-
-```
-GET /telemetry/device/{device_id}
-```
-
-### Purpose
-
-Returns every telemetry record belonging to a particular drone.
+| Table | Purpose |
+|--------|---------|
+| `users` | Stores user accounts and authentication information. |
+| `devices` | Stores registered drone/device information. |
+| `telemetry` | Stores telemetry data received from drones. |
 
 ---
 
-## 5.5 Update Telemetry
+# Authentication
 
-### Endpoint
+Protected APIs use JWT Bearer Authentication.
 
-```
-PUT /telemetry/{telemetry_id}
-```
+Workflow:
 
-### Purpose
-
-Updates an existing telemetry record.
-
----
-
-## 5.6 Delete Telemetry
-
-### Endpoint
-
-```
-DELETE /telemetry/{telemetry_id}
-```
-
-### Purpose
-
-Deletes a telemetry record.
+1. User logs in using `/auth/login`.
+2. Server validates credentials.
+3. JWT token is generated.
+4. Token is supplied through Swagger Authorize or HTTP Authorization Header.
+5. Protected APIs validate the token before processing the request.
 
 ---
 
-# 6. CRUD Functions Developed
+# API Testing
 
-Inside
+All APIs were tested using Swagger UI.
 
-```
-app/crud/telemetry.py
-```
+Testing included:
 
-the following functions were implemented.
-
-```
-create_telemetry()
-
-get_all_telemetry()
-
-get_latest_telemetry()
-
-get_device_telemetry()
-
-update_telemetry()
-
-delete_telemetry()
-```
+- Successful requests (200 OK)
+- Resource creation
+- Resource retrieval
+- Resource update
+- Resource deletion
+- Authentication using JWT tokens
 
 ---
 
-# 7. Authentication
+# Phase 2 Summary
 
-Every endpoint requires authentication.
+Phase 2 successfully implemented the core backend functionality of the DroneCloud project. The backend now supports:
 
-Dependency used:
+- User Authentication
+- User Management
+- Device Management
+- Telemetry Management
+- Health Monitoring APIs
 
-```python
-current_user: User = Depends(get_current_user)
-```
+A total of **19 REST APIs** were developed and integrated with the PostgreSQL database. All CRUD operations were implemented where required, and protected endpoints were secured using JWT authentication.
 
-JWT Bearer token is supplied through Swagger Authorize button.
-
----
-
-# 8. Testing
-
-Testing was performed using Swagger UI.
-
-Each endpoint was tested for:
-
-- Successful request (200)
-- Record not found (404)
-- Unauthorized access (401)
-- Internal server errors (500)
-
----
-
-# 9. Major Problems Faced
-
-## Problem 1
-
-### Error
-
-```
-AttributeError:
-Telemetry has no attribute device_id
-```
-
-### Cause
-
-Telemetry model did not contain
-
-```
-device_id
-```
-
-### Solution
-
-Added
-
-```python
-device_id = Column(
-    Integer,
-    ForeignKey("devices.id"),
-    nullable=False
-)
-```
-
-to
-
-```
-models/telemetry.py
-```
-
----
-
-## Problem 2
-
-### Error
-
-```
-column telemetry.device_id does not exist
-```
-
-### Cause
-
-The SQLAlchemy model had been updated, but the PostgreSQL table schema had not.
-
-### Solution
-
-Added a new database column:
-
-```sql
-ALTER TABLE telemetry
-ADD COLUMN device_id INTEGER;
-```
-
----
-
-## Problem 3
-
-### Error
-
-```
-column battery_level does not exist
-```
-
-### Cause
-
-Model used
-
-```
-battery_level
-```
-
-while database still contained
-
-```
-battery
-```
-
-### Solution
-
-Added:
-
-```sql
-ALTER TABLE telemetry
-ADD COLUMN battery_level INTEGER;
-```
-
-Copied existing values:
-
-```sql
-UPDATE telemetry
-SET battery_level = battery;
-```
-
----
-
-## Problem 4
-
-### Error
-
-```
-UPDATE 0
-```
-
-### Cause
-
-Telemetry table contained zero records.
-
-### Solution
-
-Inserted sample telemetry manually.
-
----
-
-## Problem 5
-
-### Error
-
-```
-No telemetry found
-```
-
-### Cause
-
-No telemetry rows existed.
-
-### Solution
-
-Inserted sample telemetry.
-
----
-
-## Problem 6
-
-### Error
-
-```
-RecursionError:
-maximum recursion depth exceeded
-```
-
-### Cause
-
-API function
-
-```
-get_device_telemetry()
-```
-
-had the same name as the imported CRUD function, causing the endpoint to recursively call itself.
-
-### Solution
-
-Renamed the API function to:
-
-```python
-get_telemetry_by_device()
-```
-
-while keeping the CRUD function name unchanged.
-
----
-
-## Problem 7
-
-### Error
-
-```
-role "postgres" does not exist
-```
-
-### Cause
-
-Attempted to connect using the wrong PostgreSQL user.
-
-### Solution
-
-Checked the `.env` file and found:
-
-```
-POSTGRES_USER=droneadmin
-```
-
-Connected using:
-
-```bash
-docker compose exec postgres psql \
--U droneadmin \
--d dronecloud
-```
-
----
-
-## Problem 8
-
-### Error
-
-```
-column name does not exist
-```
-
-### Cause
-
-The `devices` table did not contain a `name` column.
-
-### Solution
-
-Inspected the table:
-
-```sql
-\d devices
-```
-
-Used the correct column:
-
-```
-device_name
-```
-
----
-
-## Problem 9
-
-### Empty Telemetry Table
-
-Verified using:
-
-```sql
-SELECT COUNT(*) FROM telemetry;
-```
-
-Result:
-
-```
-0
-```
-
-Solution:
-
-Inserted sample telemetry manually.
-
----
-
-# 10. SQL Commands Used
-
-## View telemetry schema
-
-```sql
-\d telemetry
-```
-
----
-
-## View devices schema
-
-```sql
-\d devices
-```
-
----
-
-## Count telemetry records
-
-```sql
-SELECT COUNT(*) FROM telemetry;
-```
-
----
-
-## View available devices
-
-```sql
-SELECT id, device_name FROM devices;
-```
-
----
-
-## Insert telemetry
-
-```sql
-INSERT INTO telemetry (
-device_id,
-latitude,
-longitude,
-altitude,
-battery_level
-)
-VALUES (
-3,
-31.634,
-74.872,
-120.5,
-85
-);
-```
-
----
-
-## Update telemetry
-
-```sql
-UPDATE telemetry
-SET battery_level = battery;
-```
-
----
-
-## Assign device IDs
-
-```sql
-UPDATE telemetry
-SET device_id = 3
-WHERE device_id IS NULL;
-```
-
----
-
-# 11. Docker Commands Used
-
-Restart backend
-
-```bash
-docker compose restart backend
-```
-
-View logs
-
-```bash
-docker compose logs backend --tail=30
-```
-
-Open PostgreSQL
-
-```bash
-docker compose exec postgres \
-psql -U droneadmin -d dronecloud
-```
-
----
-
-# 12. Verification
-
-The following endpoints were successfully tested:
-
-- ✅ POST /telemetry
-- ✅ GET /telemetry
-- ✅ GET /telemetry/device/{id}
-- ✅ GET /telemetry/device/{id}/latest
-- ✅ PUT /telemetry/{id}
-- ✅ DELETE /telemetry/{id}
-
----
-
-# 13. Learning Outcomes
-
-During this phase the following concepts were learned:
-
-- FastAPI API development
-- SQLAlchemy CRUD operations
-- Pydantic schema validation
-- Dependency Injection
-- JWT authentication
-- PostgreSQL integration
-- Docker container debugging
-- Swagger API testing
-- Database schema modification
-- SQL debugging
-- SQLAlchemy relationship mapping
-- REST API design
-- Error diagnosis using backend logs
-- Recursive function debugging
-
----
-
-# 14. Phase 2 Summary
-
-Phase 2 successfully implemented a complete Telemetry Management module for DroneCloud. The module supports full CRUD operations with authentication, database integration, and Swagger testing. Several database schema mismatches and runtime issues were identified and resolved, resulting in a stable and functional telemetry API.
-
-**Status:** ✅ Phase 2 Completed
+Phase 2 establishes the backend foundation required for subsequent phases, including mission management, live video streaming, and drone control.
