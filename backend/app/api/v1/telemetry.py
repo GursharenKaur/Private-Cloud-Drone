@@ -1,7 +1,15 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException
-
+from app.crud.telemetry import (
+    create_telemetry,
+    get_all_telemetry,
+    get_telemetry_by_device,
+    get_latest_telemetry,
+    get_device_telemetry,
+    delete_telemetry,
+)
+from app.crud.telemetry import update_telemetry
 from app.core.security import get_current_user
 from app.crud.telemetry import (
     create_telemetry,
@@ -76,3 +84,36 @@ def get_telemetry_by_device(
         )
 
     return telemetry
+
+@router.delete("/{telemetry_id}")
+def remove_telemetry(
+    telemetry_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    telemetry = delete_telemetry(db, telemetry_id)
+
+    if telemetry is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Telemetry not found",
+        )
+
+    return {"message": "Telemetry deleted successfully"}
+
+@router.put("/{telemetry_id}", response_model=TelemetryResponse)
+def edit_telemetry(
+    telemetry_id: int,
+    telemetry: TelemetryCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    updated = update_telemetry(db, telemetry_id, telemetry)
+
+    if updated is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Telemetry not found",
+        )
+
+    return updated

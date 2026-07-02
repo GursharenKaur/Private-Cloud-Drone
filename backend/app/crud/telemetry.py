@@ -65,3 +65,50 @@ def get_device_telemetry(db: Session, device_id: int):
         .order_by(Telemetry.timestamp.desc())
         .all()
     )
+def delete_telemetry(db: Session, telemetry_id: int):
+    telemetry = (
+        db.query(Telemetry)
+        .filter(Telemetry.id == telemetry_id)
+        .first()
+    )
+
+    if telemetry is None:
+        return None
+
+    db.delete(telemetry)
+    db.commit()
+
+    return telemetry
+
+def delete_telemetry(db: Session, telemetry_id: int):
+    telemetry = (
+        db.query(Telemetry)
+        .filter(Telemetry.id == telemetry_id)
+        .first()
+    )
+
+    if telemetry is None:
+        return None
+
+    db.delete(telemetry)
+    db.commit()
+
+    return telemetry
+
+def update_telemetry(db: Session, telemetry_id: int, telemetry_data):
+    telemetry = (
+        db.query(Telemetry)
+        .filter(Telemetry.id == telemetry_id)
+        .first()
+    )
+
+    if telemetry is None:
+        return None
+
+    for key, value in telemetry_data.model_dump(exclude_unset=True).items():
+        setattr(telemetry, key, value)
+
+    db.commit()
+    db.refresh(telemetry)
+
+    return telemetry
