@@ -157,3 +157,17 @@ Example:
 Now comes the most exciting part of the project.
 
 From this point onward, we will stop "echoing" messages and build a real **WebRTC signaling server**, after which we'll establish a direct peer-to-peer connection so that the **phone's camera streams live onto the dashboard**. This is where the project transitions from backend infrastructure into a real-time video streaming system.
+
+                FastAPI Backend
+
+           websocket.py
+                 │
+                 ▼
+           signaling.py
+                 │
+                 ▼
+        ConnectionManager
+         ▲            ▲
+         │            │
+         │            │
+ Camera Page      Dashboard

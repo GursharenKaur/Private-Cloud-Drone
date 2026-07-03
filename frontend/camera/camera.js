@@ -8,6 +8,14 @@ import {
 
 } from "./media.js";
 
+import {
+
+    createPeerConnection,
+    addLocalTracks,
+    createOffer,
+    setRemoteAnswer
+} from "./webrtc.js";
+
 // Video preview element
 const localVideo = document.getElementById("localVideo");
 
@@ -19,27 +27,47 @@ const stopBtn = document.getElementById("stopBtn");
 const statusText = document.getElementById("statusText");
 
 // Stores the active camera stream
-let localStream = null;
+
+//let localStream = null;
 
 //function needs change 
-async function startCamera(){
+async function startCamera() {
+    console.log("Inside startCamera");
+    try {
 
-    try{
+        const stream = await startLocalCamera(localVideo);
 
-        await startLocalCamera(localVideo);
+        createPeerConnection();
 
-        statusText.textContent =
-            "Camera Started";
+        addLocalTracks(stream);
+
+        const offer = await createOffer();
+
+        console.log(offer);
+
+        statusText.textContent = "Offer Created";
+
+        socket.send(
+            JSON.stringify({
+            target: "dashboard",
+            type: "offer",
+            sender: "phone_001",
+            sdp: offer
+        })
+    );
+
+        console.log("📤 Offer sent");
 
     }
-
     catch(error){
 
-        statusText.textContent =
-            "Camera Failed";
+    console.error("START CAMERA ERROR:", error);
 
-    }
+    alert(error.name + "\n\n" + error.message);
 
+    statusText.textContent = error.name;
+
+}
 }
 
 console.log("Camera page loaded successfully.");
@@ -49,21 +77,40 @@ console.log(startBtn);
 console.log(stopBtn);
 console.log(statusText);
 
-startBtn.addEventListener("click", () => {
+// startBtn.addEventListener("click", async () => {
+//      console.log("🚀 Start button clicked");
+//     await startCamera();
 
-    socket.send(
-        JSON.stringify({
+//     socket.send(
+//         JSON.stringify({
 
-            target: "dashboard",
+//             target: "dashboard",
 
-            type: "hello",
+//             type: "hello",
 
-            sender: "phone_001",
+//             sender: "phone_001",
 
-            message: "Hello Dashboard!"
+//             message: "Hello Dashboard!"
 
-        })
-    );
+//         })
+//     );
+
+// });
+startBtn.addEventListener("click", async () => {
+
+    console.log("🚀 Start button clicked");
+
+    try {
+
+        await startCamera();
+
+        console.log("✅ startCamera() completed");
+
+    } catch (err) {
+
+        console.error("❌ Error:", err);
+
+    }
 
 });
 
@@ -76,7 +123,27 @@ stopBtn.addEventListener("click", () => {
 
 });
 
-const socket = new WebSocket("ws://localhost:8000/ws/phone_001");
+const wsProtocol =
+    location.protocol === "https:" ? "wss" : "ws";
+
+const socket = new WebSocket(
+    `${wsProtocol}://${location.host}/ws/phone_001`
+);
+
+window.sendIceCandidate = (candidate) => {
+
+    socket.send(
+        JSON.stringify({
+            target: "dashboard",
+            type: "candidate",
+            sender: "phone_001",
+            candidate: candidate
+        })
+    );
+
+    console.log("📤 ICE Candidate Sent");
+
+};
 
 socket.onopen = () => {
 
@@ -86,9 +153,24 @@ socket.onopen = () => {
 
 };
 
-socket.onmessage = (event) => {
+socket.onmessage = async (event) => {
 
-    console.log("📨", event.data);
+    const data = JSON.parse(event.data);
+
+    console.log("📨", data);
+
+    if (data.type === "answer") {
+
+        console.log("🎉 Answer received!");
+
+        await setRemoteAnswer(data.sdp);
+
+        console.log("✅ Phone negotiation completed");
+
+        statusText.textContent =
+            "Connected to Dashboard";
+
+    }
 
 };
 
@@ -103,3 +185,4 @@ socket.onclose = () => {
     console.log("Disconnected");
 
 };
+console.log("Start Button Object:", startBtn);
