@@ -16,3 +16,26 @@ def get_video_by_filename(db: Session, filename: str):
         Video.filename == filename
     ).first()
 
+
+def create_video(
+    db: Session,
+    filename: str,
+    filepath: str,
+    file_size: int,
+    duration: int = None,
+    resolution: str = None,
+):
+
+    video = Video(
+        filename=filename,
+        filepath=filepath,
+        file_size=file_size,
+        duration=duration,
+        resolution=resolution,
+    )
+
+    db.add(video)
+    db.commit()
+    db.refresh(video)
+
+    return video

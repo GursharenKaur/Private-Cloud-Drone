@@ -12,6 +12,7 @@ from app.api.v1.telemetry import router as telemetry_router
 from app.api.v1.users import router as users_router
 from app.core.config import settings
 from app.streaming.websocket import router as websocket_router
+from app.api.videos import router as videos_router
 
 
 app = FastAPI(
@@ -19,7 +20,7 @@ app = FastAPI(
     version=settings.API_VERSION
 )
 
-FRONTEND_DIR = Path("/frontend")
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
 app.mount(
     "/static",
@@ -36,6 +37,7 @@ app.include_router(health_router)
 app.include_router(devices_router)
 app.include_router(telemetry_router)
 app.include_router(websocket_router)
+app.include_router(videos_router)
 
 @app.get("/")
 def root():

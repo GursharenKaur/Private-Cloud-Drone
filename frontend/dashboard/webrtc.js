@@ -3,6 +3,7 @@
 // =====================================
 
 let peerConnection = null;
+let remoteStream = null;
 
 export function createPeerConnection(remoteVideo) {
 
@@ -16,13 +17,15 @@ export function createPeerConnection(remoteVideo) {
 
     });
 
-    peerConnection.ontrack = (event) => {
+  peerConnection.ontrack = (event) => {
 
-        console.log("📹 Remote track received");
+    console.log("✅ Remote stream received");
 
-        remoteVideo.srcObject = event.streams[0];
+    remoteStream = event.streams[0];
 
-    };
+    remoteVideo.srcObject = remoteStream;
+
+};
 
     return peerConnection;
 
@@ -44,5 +47,10 @@ export async function addIceCandidate(candidate) {
     );
 
     console.log("🧊 ICE Candidate Added");
+
+}
+export function getRemoteStream() {
+
+    return remoteStream;
 
 }
