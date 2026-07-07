@@ -23,7 +23,7 @@ uploads/*
 !videos/.gitkeep
 !uploads/.gitkeep
 !recordings/.gitkeep
-
+/backend/uploads/
 # Certificates
 certificates/*.pem
 certificates/*.key
@@ -32,10 +32,6 @@ certificates/*.key
 # Database
 database/
 
-# Uploads
-uploads/
-videos/
-recordings/
 
 # Python cache
 .pytest_cache/

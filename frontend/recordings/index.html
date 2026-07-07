@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Recorded Videos</title>
+
+    <link rel="stylesheet"
+          href="/static/recordings/recordings.css">
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <!-- Header -->
+        <div class="header">
+
+            <h1>📹 Recorded Videos</h1>
+
+            <a
+                id="backButton"
+                href="/dashboard">
+
+                ← Back to Dashboard
+
+            </a>
+
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats">
+
+            <div class="stat-card">
+
+                <h3 id="totalVideos">0</h3>
+
+                <p>Total Videos</p>
+
+            </div>
+
+            <div class="stat-card">
+
+                <h3 id="totalStorage">0 MB</h3>
+
+                <p>Storage Used</p>
+
+            </div>
+
+        </div>
+
+        <hr>
+
+        <!-- Video List -->
+        <div id="recordingsList">
+
+            <p>Loading recordings...</p>
+
+        </div>
+
+        <hr>
+
+        <!-- Video Player -->
+        <div id="videoPlayerContainer">
+
+            <h2>🎬 Video Player</h2>
+
+            <video
+                id="videoPlayer"
+                controls
+                width="100%">
+            </video>
+
+        </div>
+
+    </div>
+
+    <script
+        type="module"
+        src="/static/recordings/recordings.js">
+    </script>
+
+</body>
+
+</html>
