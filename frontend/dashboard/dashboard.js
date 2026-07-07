@@ -1,14 +1,24 @@
+console.log("🚀 Dashboard Loaded");
+
 import {
     createPeerConnection,
     addIceCandidate,
-    getPeerConnection,
     getRemoteStream
 } from "./webrtc.js";
 
+// ======================================================
+// DOM Elements
+// ======================================================
+
 const statusText = document.getElementById("statusText");
 const remoteVideo = document.getElementById("remoteVideo");
+
 const startRecordingBtn = document.getElementById("startRecording");
 const stopRecordingBtn = document.getElementById("stopRecording");
+
+// ======================================================
+// WebSocket Connection
+// ======================================================
 
 const wsProtocol =
     location.protocol === "https:" ? "wss" : "ws";
@@ -16,9 +26,17 @@ const wsProtocol =
 const socket = new WebSocket(
     `${wsProtocol}://${location.host}/ws/dashboard`
 );
-let remoteStream = null;  
+
+// ======================================================
+// Recording Variables
+// ======================================================
+
 let mediaRecorder = null;
-let recordedChunks = [];  
+let recordedChunks = [];
+
+// ======================================================
+// WebSocket Events
+// ======================================================
 
 socket.onopen = () => {
 
@@ -29,65 +47,28 @@ socket.onopen = () => {
 
 };
 
-// socket.onmessage = async (event) => {
+socket.onerror = () => {
 
-//     const data = JSON.parse(event.data);
+    console.error("WebSocket Error");
 
-//     console.log("📨", data);
+    statusText.textContent =
+        "Connection Error.";
 
-//     if (data.type === "offer") {
+};
 
-//     console.log("🎉 Offer received!");
+socket.onclose = () => {
 
-//     const peerConnection =
-//         createPeerConnection(remoteVideo);
+    console.log("WebSocket Closed");
 
-//         await peerConnection.setRemoteDescription(
-//             new RTCSessionDescription(data.sdp)
-//     );
-    
-//     if (data.type === "candidate") {
+    statusText.textContent =
+        "Disconnected.";
 
-//     console.log("🧊 Candidate received");
+};
 
-//     await addIceCandidate(data.candidate);
+// ======================================================
+// WebRTC Signaling
+// ======================================================
 
-//     }
-
-    
-//     console.log("✅ Remote Description Set");
-        
-//     const answer = await peerConnection.createAnswer();
-
-//     await peerConnection.setLocalDescription(answer);
-
-//     console.log("✅ Answer Created");
-
-//     socket.send(
-//     JSON.stringify({
-
-//         target: "phone_001",
-
-//         type: "answer",
-
-//         sender: "dashboard",
-
-//         sdp: answer
-
-//     })
-//     );
-
-//     console.log("📤 Answer Sent");
-
-//     statusText.textContent = "Answer Sent";
-
-
-//     statusText.textContent =
-//         "Offer Received";
-
-// }
-
-// };
 socket.onmessage = async (event) => {
 
     const data = JSON.parse(event.data);
@@ -96,7 +77,7 @@ socket.onmessage = async (event) => {
 
     if (data.type === "offer") {
 
-        console.log("🎉 Offer received!");
+        console.log("🎉 Offer received");
 
         const peerConnection =
             createPeerConnection(remoteVideo);
@@ -112,147 +93,155 @@ socket.onmessage = async (event) => {
 
         await peerConnection.setLocalDescription(answer);
 
-        console.log("✅ Answer Created");
-
         socket.send(
             JSON.stringify({
                 target: "phone_001",
-                type: "answer",
                 sender: "dashboard",
+                type: "answer",
                 sdp: answer
             })
         );
 
         console.log("📤 Answer Sent");
-       
-
-        setTimeout(() => {
-
-            const stream = getRemoteStream();
-
-            console.log("🎥 Remote Stream:", stream);
-
-        }, 1000);
 
     }
-
-    // <-- THIS IS A SEPARATE if
 
     if (data.type === "candidate") {
 
-        console.log("🧊 Candidate received");
+        console.log("🧊 ICE Candidate");
 
-        await addIceCandidate(data.candidate);
+        await addIceCandidate(
+            data.candidate
+        );
 
     }
 
 };
 
-socket.onerror = () => {
+// ======================================================
+// Start Recording
+// ======================================================
 
-    statusText.textContent =
-        "Connection Error.";
-
-};
-
-socket.onclose = () => {
-
-    statusText.textContent =
-        "Disconnected.";
-
-};
 startRecordingBtn.onclick = () => {
 
-    console.log("🎬 Start Recording button clicked");
+    console.log("🎬 Start Recording");
 
-    const stream = getRemoteStream();
+    const stream =
+        getRemoteStream();
 
-    console.log("🎥 Stream:", stream);
     if (!stream) {
 
-    alert("Remote stream not available yet!");
+        alert("Remote stream not available.");
 
-    return;
+        return;
 
-}
+    }
 
-    mediaRecorder = new MediaRecorder(stream);
-    mediaRecorder.onstop = () => {
+    recordedChunks = [];
 
-    console.log("✅ Recording Stopped");
+    mediaRecorder =
+        new MediaRecorder(stream);
 
-            const recordedVideo = new Blob(recordedChunks, {
+    mediaRecorder.ondataavailable = (event) => {
+
+        if (event.data.size > 0) {
+
+            recordedChunks.push(event.data);
+
+        }
+
+    };
+
+    mediaRecorder.onstop = async () => {
+
+        console.log("⏹ Recording Finished");
+
+        const recordedVideo =
+            new Blob(recordedChunks, {
                 type: "video/webm"
             });
 
-            console.log("🎥 Recorded Video Blob:", recordedVideo);
-            const formData = new FormData();
+        // ==========================
+        // Upload
+        // ==========================
 
-            formData.append(
+        const formData =
+            new FormData();
+
+        formData.append(
             "video",
             recordedVideo,
             "recording.webm"
-);
+        );
 
-console.log("📤 Upload Ready");
-        fetch("/videos/upload", {
-        method: "POST",
-        body: formData
-})
-.then(response => response.json())
-.then(data => {
+        try {
 
-    console.log("✅ Upload Successful");
+            const response =
+                await fetch("/videos/upload", {
 
-    console.log(data);
+                    method: "POST",
 
-})
-.catch(error => {
+                    body: formData
 
-    console.error("❌ Upload Failed");
+                });
 
-    console.error(error);
+            const result =
+                await response.json();
 
-});
-            const videoURL = URL.createObjectURL(recordedVideo);
+            console.log(result);
 
-        const downloadLink = document.createElement("a");
+        }
 
-        downloadLink.href = videoURL;
+        catch (error) {
 
-        downloadLink.download = "recording.webm";
+            console.error(error);
 
-        downloadLink.click();
+        }
 
-        URL.revokeObjectURL(videoURL);
+        // ==========================
+        // Local Download
+        // ==========================
+
+        const url =
+            URL.createObjectURL(recordedVideo);
+
+        const a =
+            document.createElement("a");
+
+        a.href = url;
+
+        a.download = "recording.webm";
+
+        a.click();
+
+        URL.revokeObjectURL(url);
+
+    };
+
+    mediaRecorder.start(1000);
+
+    startRecordingBtn.disabled = true;
+
+    stopRecordingBtn.disabled = false;
+
+    console.log("🔴 Recording Started");
 
 };
 
-    console.log("🎥 MediaRecorder:", mediaRecorder);
-    mediaRecorder.start(1000);
+// ======================================================
+// Stop Recording
+// ======================================================
 
-    console.log("🔴 Recording Started");    
-    startRecordingBtn.disabled = true;
-    stopRecordingBtn.disabled = false;
-    mediaRecorder.ondataavailable = (event) => {
+stopRecordingBtn.onclick = () => {
 
-    console.log("📦 Chunk received:", event.data);
+    if (mediaRecorder) {
 
-    if (event.data.size > 0) {
-
-        recordedChunks.push(event.data);
-
-        console.log("📁 Total Chunks:", recordedChunks.length);
+        mediaRecorder.stop();
 
     }
 
-};
+    startRecordingBtn.disabled = false;
 
-};
-stopRecordingBtn.onclick = () => {
-
-    console.log("⏹️ Stop Recording button clicked");
-
-    mediaRecorder.stop();
+    stopRecordingBtn.disabled = true;
 
 };

@@ -1,268 +1,29 @@
-# Phase 4 - Video Recording & Storage Documentation
-
-## Overview
-
-The objective of this phase was to extend the existing WebRTC live streaming system by introducing a complete video recording and storage pipeline. This phase enables the dashboard to record the incoming live video stream, automatically upload the recorded video to the backend, store the video on the server, and maintain its metadata inside PostgreSQL for future retrieval and management.
+# Phase 4 – Video Recording, Storage & Recording Management
 
 ---
 
-# 1. Video Recording
+# Overview
 
-### Objective
-Enable recording of the live WebRTC stream directly from the dashboard.
+The objective of Phase 4 was to transform the existing WebRTC live streaming application into a complete video recording and management system.
 
-### Features Implemented
+This phase introduced:
 
-- Added **Start Recording** button on the dashboard.
-- Added **Stop Recording** button on the dashboard.
-- Integrated the browser's **MediaRecorder API**.
-- Configured MediaRecorder to record the incoming **WebRTC remote stream** instead of the local camera stream.
-- Captured recorded data in small chunks using the `ondataavailable` event.
-- Combined all recorded chunks into a single `.webm` Blob once recording stops.
+- Live stream recording
+- Automatic video uploads
+- Video storage on the server
+- PostgreSQL metadata storage
+- Recording archive
+- Video playback
+- Video download
+- Video deletion
+- Dashboard navigation
+- Recording statistics
 
-### Working Flow
-
-```
-Remote WebRTC Stream
-          │
-          ▼
-    MediaRecorder
-          │
-          ▼
-Collect Video Chunks
-          │
-          ▼
-Combine Chunks
-          │
-          ▼
-recording.webm Blob
-```
+At the end of this phase, the application supports the complete lifecycle of recorded drone footage.
 
 ---
 
-# 2. Download Recorded Video
-
-### Objective
-
-Allow users to immediately download the recorded video after recording is completed.
-
-### Features Implemented
-
-- Automatically generated a downloadable `.webm` file.
-- Created a Blob URL for the recorded video.
-- Triggered automatic file download once recording stopped.
-- Verified that the downloaded recording plays correctly.
-
-### Workflow
-
-```
-Stop Recording
-       │
-       ▼
-Create Blob
-       │
-       ▼
-Generate Blob URL
-       │
-       ▼
-Automatic Download
-```
-
----
-
-# 3. Backend Video Upload API
-
-### Objective
-
-Allow the dashboard to upload recorded videos directly to the backend.
-
-### Features Implemented
-
-Created a dedicated Videos API.
-
-Implemented:
-
-```
-POST /videos/upload
-```
-
-The API:
-
-- Accepts uploaded videos using FastAPI's `UploadFile`.
-- Saves uploaded videos inside the server's `uploads/` directory.
-- Returns upload confirmation to the frontend.
-
-### Upload Workflow
-
-```
-Dashboard
-     │
-     ▼
-POST /videos/upload
-     │
-     ▼
-FastAPI
-     │
-     ▼
-uploads/
-```
-
----
-
-# 4. FastAPI Integration
-
-### Objective
-
-Integrate the Videos API into the existing backend.
-
-### Features Implemented
-
-- Registered the Videos router inside `main.py`.
-- Included the Videos API in Swagger documentation (`/docs`).
-- Resolved router registration issues.
-- Fixed endpoint routing errors.
-- Fixed HTTP 404 errors during upload requests.
-
----
-
-# 5. Docker & Nginx Integration
-
-### Objective
-
-Allow large recorded videos to be uploaded successfully through Nginx.
-
-### Features Implemented
-
-- Updated Docker backend with the newly created Videos API.
-- Rebuilt the backend container after code modifications.
-- Configured Nginx to support larger upload sizes.
-
-Added:
-
-```nginx
-client_max_body_size 100M;
-```
-
-This eliminated the previous upload limitation that caused:
-
-```
-413 Request Entity Too Large
-```
-
-### Result
-
-Large video recordings can now be uploaded successfully through the Nginx reverse proxy.
-
----
-
-# 6. Automatic Upload from Dashboard
-
-### Objective
-
-Remove the manual upload process and automate video uploading after recording.
-
-### Features Implemented
-
-After the user clicks **Stop Recording**:
-
-- Recording Blob is created.
-- Blob is wrapped inside a `FormData` object.
-- JavaScript `fetch()` automatically uploads the video.
-- Upload response is displayed on the dashboard.
-
-### Complete Workflow
-
-```
-Stop Recording
-        │
-        ▼
-Create Blob
-        │
-        ▼
-Create FormData
-        │
-        ▼
-fetch()
-        │
-        ▼
-POST /videos/upload
-```
-
-This completely removes the need for manual uploads using Swagger.
-
----
-
-# 7. PostgreSQL Integration
-
-### Objective
-
-Store metadata for every uploaded recording inside PostgreSQL.
-
-### Features Implemented
-
-- Used the existing SQLAlchemy configuration.
-- Added `create_video()` to the CRUD layer.
-- Inserted video metadata into the `videos` table after every successful upload.
-
-### Metadata Stored
-
-| Field | Status |
-|--------|--------|
-| filename | ✅ |
-| filepath | ✅ |
-| file_size | ✅ |
-| uploaded_at | ✅ |
-| duration | ⏳ Currently NULL |
-| resolution | ⏳ Currently NULL |
-
-### Database Workflow
-
-```
-Video Upload
-      │
-      ▼
-Save Video File
-      │
-      ▼
-Create Video Object
-      │
-      ▼
-Insert into PostgreSQL
-```
-
----
-
-# 8. Database Verification
-
-### Objective
-
-Verify that uploaded recordings are successfully stored inside PostgreSQL.
-
-### Features Implemented
-
-- Connected to the PostgreSQL Docker container.
-- Executed SQL queries using `psql`.
-- Verified entries inside the `videos` table.
-- Confirmed that every successful upload automatically creates a new database record.
-
-Example Query
-
-```sql
-SELECT * FROM videos;
-```
-
-Example Result
-
-```
-id | filename | filepath | file_size | uploaded_at
---------------------------------------------------
-1  | recording.webm | uploads/recording.webm | 2086283 | ...
-2  | recording.webm | uploads/recording.webm | 1042311 | ...
-```
-
----
-
-# Overall System Architecture
+# Phase 4 Architecture
 
 ```
 Phone Camera
@@ -277,13 +38,13 @@ Dashboard
 MediaRecorder
       │
       ▼
-Recorded Blob (.webm)
+Recorded Video (.webm)
       │
       ▼
-Automatic Upload (fetch)
+Automatic Upload
       │
       ▼
-FastAPI Upload API
+FastAPI
       │
       ├────────────► uploads/
       │
@@ -291,7 +52,473 @@ FastAPI Upload API
 PostgreSQL
       │
       ▼
-Video Metadata
+Recording Archive
+      │
+      ├────────► Play
+      ├────────► Download
+      └────────► Delete
+```
+
+---
+
+# 1. Live Stream Recording
+
+## Objective
+
+Allow the dashboard to record the incoming WebRTC video stream.
+
+## Features Implemented
+
+- Added **Start Recording** button.
+- Added **Stop Recording** button.
+- Integrated MediaRecorder API.
+- Recorded the remote WebRTC stream.
+- Captured data chunks using `ondataavailable`.
+- Combined chunks into a `.webm` video Blob.
+
+### Workflow
+
+```
+Remote Stream
+      │
+      ▼
+MediaRecorder
+      │
+      ▼
+Video Chunks
+      │
+      ▼
+Blob (.webm)
+```
+
+---
+
+# 2. Automatic Download
+
+## Objective
+
+Allow users to immediately download every recording.
+
+## Features Implemented
+
+- Created Blob URLs.
+- Triggered automatic browser download.
+- Verified downloaded recordings.
+
+Workflow
+
+```
+Stop Recording
+      │
+      ▼
+Create Blob
+      │
+      ▼
+Download Video
+```
+
+---
+
+# 3. Automatic Upload
+
+## Objective
+
+Upload recordings automatically without Swagger.
+
+## Features Implemented
+
+- Created FormData.
+- Uploaded using Fetch API.
+- Removed manual upload workflow.
+
+Workflow
+
+```
+Recording
+     │
+     ▼
+FormData
+     │
+     ▼
+POST /videos/upload
+```
+
+---
+
+# 4. Backend Video Upload API
+
+Created:
+
+```
+POST /videos/upload
+```
+
+Features
+
+- UploadFile support
+- Automatic server-side storage
+- Upload confirmation
+- Unique filenames
+
+Videos are stored inside:
+
+```
+uploads/
+```
+
+---
+
+# 5. Unique Timestamped Filenames
+
+Originally recordings were saved as:
+
+```
+recording.webm
+```
+
+which caused every new upload to overwrite the previous recording.
+
+This was improved by generating timestamp-based filenames.
+
+Example
+
+```
+20260707_163522_recording.webm
+```
+
+Benefits
+
+- Prevents overwriting
+- Preserves recording history
+- Easier identification
+
+---
+
+# 6. PostgreSQL Integration
+
+Every uploaded recording automatically creates a database record.
+
+Stored metadata
+
+| Field | Status |
+|--------|--------|
+| id | ✅ |
+| filename | ✅ |
+| filepath | ✅ |
+| file_size | ✅ |
+| uploaded_at | ✅ |
+| duration | Placeholder |
+| resolution | Placeholder |
+
+Workflow
+
+```
+Upload
+   │
+   ▼
+Save File
+   │
+   ▼
+Create SQLAlchemy Object
+   │
+   ▼
+Insert PostgreSQL Record
+```
+
+---
+
+# 7. Recording Retrieval API
+
+Created
+
+```
+GET /videos/
+```
+
+Purpose
+
+Return every stored recording.
+
+Returned information
+
+- id
+- filename
+- filepath
+- upload time
+- size
+- duration
+- resolution
+
+---
+
+# 8. Video Streaming API
+
+Created
+
+```
+GET /videos/{video_id}/stream
+```
+
+Purpose
+
+Play recordings directly inside the application.
+
+Instead of downloading recordings, the frontend now streams them using HTML5 Video.
+
+Workflow
+
+```
+Click Play
+      │
+      ▼
+GET /videos/{id}/stream
+      │
+      ▼
+FastAPI
+      │
+      ▼
+HTML5 Video Player
+```
+
+---
+
+# 9. Video Delete API
+
+Created
+
+```
+DELETE /videos/{video_id}
+```
+
+Features
+
+Deletes:
+
+- physical video file
+- PostgreSQL metadata
+
+Workflow
+
+```
+Delete Request
+       │
+       ▼
+Find Video
+       │
+       ▼
+Delete uploads/video.webm
+       │
+       ▼
+Delete Database Row
+```
+
+---
+
+# 10. Docker & Nginx Integration
+
+Updated backend image.
+
+Rebuilt Docker containers.
+
+Configured
+
+```nginx
+client_max_body_size 100M;
+```
+
+Resolved
+
+```
+413 Request Entity Too Large
+```
+
+---
+
+# 11. Dashboard Improvements
+
+The dashboard now contains
+
+- Live video
+- Start Recording
+- Stop Recording
+- Connection Status
+- View Recordings navigation button
+
+The dashboard is dedicated to live monitoring.
+
+---
+
+# 12. Recordings Archive
+
+Created an entirely new page
+
+```
+/recordings
+```
+
+Purpose
+
+Separate recording management from live monitoring.
+
+Features
+
+- Recording archive
+- Video playback
+- Download
+- Delete
+- Statistics
+
+---
+
+# 13. Recording Statistics
+
+Implemented dashboard statistics.
+
+Displayed information
+
+- Total recordings
+- Total storage used
+
+Statistics update automatically after upload or deletion.
+
+---
+
+# 14. Embedded Video Player
+
+Added HTML5 Video Player.
+
+Features
+
+- Stream recordings
+- No download required
+- Play inside browser
+
+Workflow
+
+```
+Select Recording
+      │
+      ▼
+Load Stream URL
+      │
+      ▼
+Play Video
+```
+
+---
+
+# 15. Recording Download
+
+Added Download button.
+
+Workflow
+
+```
+Download Button
+       │
+       ▼
+GET /videos/{id}/stream
+       │
+       ▼
+Browser Download
+```
+
+---
+
+# 16. Recording Deletion
+
+Added Delete button.
+
+Features
+
+- Confirmation dialog
+- Deletes recording
+- Removes database record
+- Removes physical file
+- Refreshes UI
+- Updates statistics
+
+Workflow
+
+```
+Delete
+   │
+   ▼
+DELETE API
+   │
+   ▼
+Backend
+   │
+   ▼
+Delete File
+   │
+   ▼
+Delete Database Row
+   │
+   ▼
+Reload Archive
+```
+
+---
+
+# 17. Frontend Improvements
+
+Dashboard
+
+- Clean monitoring interface
+- Navigation to recordings
+
+Recordings Page
+
+- Professional recording cards
+- Statistics
+- Embedded player
+- Download button
+- Delete button
+- Responsive layout
+
+---
+
+# 18. Overall Recording Lifecycle
+
+```
+Phone Camera
+      │
+      ▼
+WebRTC Stream
+      │
+      ▼
+Dashboard
+      │
+      ▼
+Start Recording
+      │
+      ▼
+MediaRecorder
+      │
+      ▼
+Stop Recording
+      │
+      ▼
+Video Blob
+      │
+      ▼
+Automatic Upload
+      │
+      ▼
+FastAPI
+      │
+      ├────────► uploads/
+      │
+      ▼
+PostgreSQL
+      │
+      ▼
+Recordings Page
+      │
+      ├────────► Play
+      ├────────► Download
+      └────────► Delete
 ```
 
 ---
@@ -300,11 +527,33 @@ Video Metadata
 
 - WebRTC
 - MediaRecorder API
-- JavaScript (Fetch API)
+- HTML5 Video
+- JavaScript (ES6)
+- Fetch API
 - FastAPI
 - SQLAlchemy
 - PostgreSQL
 - Docker
 - Docker Compose
 - Nginx
-- Swagger/OpenAPI
+- Swagger / OpenAPI
+
+---
+
+# Phase 4 Outcome
+
+Phase 4 successfully transformed the project from a live video streaming application into a complete video recording and management platform.
+
+The application now supports:
+
+- Live drone monitoring
+- Video recording
+- Automatic upload
+- Server-side storage
+- Database metadata
+- Recording archive
+- Embedded playback
+- Video download
+- Video deletion
+- Recording statistics
+- Full CRUD management for recorded videos

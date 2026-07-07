@@ -2,7 +2,7 @@ print("🚀 NEW MAIN.PY LOADED")
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+
 from fastapi.staticfiles import StaticFiles
 
 from app.api.health import router as health_router
@@ -13,6 +13,7 @@ from app.api.v1.users import router as users_router
 from app.core.config import settings
 from app.streaming.websocket import router as websocket_router
 from app.api.videos import router as videos_router
+from fastapi.responses import FileResponse
 
 
 app = FastAPI(
@@ -55,4 +56,10 @@ def camera_page():
 def dashboard_page():
     return FileResponse(
         FRONTEND_DIR / "dashboard" / "index.html"
+    )
+
+@app.get("/recordings", include_in_schema=False)
+def recordings_page():
+    return FileResponse(
+        FRONTEND_DIR / "recordings" / "index.html"
     )

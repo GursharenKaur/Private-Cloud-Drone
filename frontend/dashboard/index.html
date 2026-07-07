@@ -5,13 +5,11 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Drone Dashboard</title>
 
-    <link rel="stylesheet"
-          href="/static/dashboard/dashboard.css">
+    <link rel="stylesheet" href="/static/dashboard/dashboard.css">
 
 </head>
 
@@ -23,6 +21,7 @@
 
         <h2>Monitoring Dashboard</h2>
 
+        <!-- Live Video -->
         <div class="video-container">
 
             <video
@@ -32,6 +31,8 @@
             </video>
 
         </div>
+
+        <!-- Recording Controls -->
         <div class="recording-controls">
 
             <button id="startRecording">
@@ -44,8 +45,24 @@
                 Stop Recording
             </button>
 
-        </div>  
+        </div>
 
+        <!-- Navigation -->
+        <div class="navigation">
+
+            <a
+                id="viewRecordings"
+                href="/recordings">
+
+                📁 View Recordings
+
+            </a>
+
+        </div>
+
+        <hr>
+
+        <!-- Status -->
         <div class="status">
 
             <h3>Status</h3>
@@ -60,7 +77,10 @@
 
     </div>
 
-    <script type="module" src="/static/dashboard/dashboard.js"></script>
+    <script
+        type="module"
+        src="/static/dashboard/dashboard.js">
+    </script>
 
 </body>
 

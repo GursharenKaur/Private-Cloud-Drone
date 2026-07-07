@@ -1,3 +1,4 @@
+import os
 from sqlalchemy.orm import Session
 
 from app.models.video import Video
@@ -37,5 +38,24 @@ def create_video(
     db.add(video)
     db.commit()
     db.refresh(video)
+
+    return video
+
+    
+
+
+def delete_video(db: Session, video_id: int):
+
+    video = get_video_by_id(db, video_id)
+
+    if video is None:
+        return None
+
+    if os.path.exists(video.filepath):
+        os.remove(video.filepath)
+
+    db.delete(video)
+
+    db.commit()
 
     return video

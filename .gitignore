@@ -19,7 +19,7 @@ logs/
 # Media
 videos/*
 uploads/*
-recordings/*
+/recordings/*
 !videos/.gitkeep
 !uploads/.gitkeep
 !recordings/.gitkeep
