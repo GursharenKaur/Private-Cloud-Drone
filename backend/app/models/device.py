@@ -25,7 +25,6 @@ class Device(Base):
         nullable=False,
     )
 
-    serial_number = Column(String(100), unique=True, nullable=False)
 
     status = Column(String(20), default="offline")
 
