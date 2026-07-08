@@ -279,3 +279,50 @@ The primary assets that require protection include:
 - Audit logs
 
 Protecting these assets ensures that only authorized users and devices can access system resources while maintaining the confidentiality, integrity, and availability of the platform.
+
+---
+
+# 7. Actors
+
+The Private Cloud Drone Project consists of two primary types of actors: **Users** and **Edge Devices**. Each actor has a specific role and set of permissions within the system.
+
+## Users
+
+Users access the system through the dashboard to monitor devices and manage system resources.
+
+The supported user roles include:
+
+- Administrator
+- Operator
+- Viewer
+
+Each role is assigned different permissions based on its responsibilities.
+
+---
+
+## Edge Devices
+
+Edge devices communicate directly with the backend after successful authentication.
+
+Examples of supported edge devices include:
+
+- Android Phone
+- Raspberry Pi
+- Raspberry Pi with Camera Module
+- NVIDIA Jetson Nano
+- NVIDIA Orin
+- Industrial IPC
+- Other embedded edge devices
+
+Regardless of the hardware platform, every device is treated as a generic authenticated edge device by the backend.
+
+---
+
+## Interaction Model
+
+The system is designed around two independent authentication models:
+
+- **Users** authenticate to access the dashboard and management features.
+- **Edge Devices** authenticate to stream video, send telemetry, upload recordings, receive commands, and communicate with the backend.
+
+This separation ensures that user operations and device operations remain independent while following the same security principles.
