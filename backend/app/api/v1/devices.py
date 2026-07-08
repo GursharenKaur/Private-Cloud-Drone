@@ -15,7 +15,11 @@ from app.crud.device import (
 )
 from app.database.database import get_db
 from app.models.user import User
-from app.schemas.device import DeviceCreate, DeviceResponse
+from app.schemas.device import (
+    DeviceCreate,
+    DeviceResponse,
+    DeviceRegistrationResponse,
+)
 
 router = APIRouter(
     prefix="/devices",
@@ -31,7 +35,10 @@ def get_devices(
     return get_all_devices(db)
 
 
-@router.post("/", response_model=DeviceResponse)
+@router.post(
+    "/register",
+    response_model=DeviceRegistrationResponse,
+)
 def add_device(
     device: DeviceCreate,
     db: Session = Depends(get_db),

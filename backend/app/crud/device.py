@@ -2,23 +2,39 @@ from sqlalchemy.orm import Session
 
 from app.models.device import Device
 from app.schemas.device import DeviceCreate
+import secrets
+import uuid
+
+from app.core.security import hash_password
 
 def create_device(
     db: Session,
     device: DeviceCreate,
 ):
+    device_uuid = str(uuid.uuid4())
+
+    device_secret = secrets.token_urlsafe(32)
+
+    secret_hash = hash_password(device_secret)
+
     db_device = Device(
+        device_uuid=device_uuid,
         device_name=device.device_name,
         device_type=device.device_type,
-        serial_number=device.serial_number,
+        firmware_version=device.firmware_version,
         status="offline",
+        secret_hash=secret_hash,
     )
 
     db.add(db_device)
     db.commit()
     db.refresh(db_device)
 
-    return db_device
+    return {
+        "device_uuid": device_uuid,
+        "device_secret": device_secret,
+        "message": "Device registered successfully. Save the device secret securely. It will not be shown again.",
+    }
 
 
 def get_all_devices(db: Session):
