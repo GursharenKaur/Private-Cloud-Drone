@@ -196,3 +196,86 @@ The dashboard allows authenticated users to:
 - View telemetry
 - Manage recordings
 - Control authorized devices
+
+---
+
+# 5. Security Design Principles
+
+The security architecture of the project is based on a set of core principles that guide the design and implementation of every security feature.
+
+## Zero Trust
+
+- No user or device is trusted by default.
+- Every request must be authenticated before access is granted.
+
+---
+
+## Least Privilege
+
+- Users and devices are given only the permissions they need.
+- Access to sensitive resources is restricted to authorized entities.
+
+---
+
+## Hardware Independence
+
+- The backend is designed around authenticated edge devices instead of specific hardware.
+- New devices can be integrated without changing the backend architecture.
+
+---
+
+## Secure Communication
+
+- All communication between devices, the backend, and the dashboard must use secure channels.
+- Sensitive data should never be transmitted over unsecured connections.
+
+---
+
+## Defense in Depth
+
+- Security is applied at multiple layers instead of relying on a single protection mechanism.
+- Authentication, authorization, validation, and logging work together to secure the system.
+
+---
+
+## Input Validation
+
+- Every request received by the backend must be validated before processing.
+- Invalid or malicious data should be rejected.
+
+---
+
+## Auditability
+
+- Important system activities should be recorded through audit logs.
+- Logs help monitor system activity and support troubleshooting and security analysis.
+
+---
+
+## Scalability
+
+- The security architecture should support future devices and new features without requiring major architectural changes.
+- New security mechanisms should integrate seamlessly with the existing system.
+
+---
+
+# 6. Assets to Protect
+
+The security architecture is designed to protect the critical resources of the Private Cloud Drone Project from unauthorized access, modification, or misuse.
+
+The primary assets that require protection include:
+
+- User accounts and credentials
+- Edge device identities and authentication information
+- Live video streams
+- Recorded videos
+- Telemetry data
+- Device commands
+- REST APIs
+- WebSocket connections
+- Database records
+- Authentication tokens
+- Configuration files and application secrets
+- Audit logs
+
+Protecting these assets ensures that only authorized users and devices can access system resources while maintaining the confidentiality, integrity, and availability of the platform.
