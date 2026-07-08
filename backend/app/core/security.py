@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.database.database import get_db
 from app.models.user import User
+from app.models.device import Device
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
@@ -75,6 +76,50 @@ def get_current_user(
         )
 
     return user
+def get_current_device(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+
+        if payload.get("type") != "device":
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid device token",
+            )
+
+        device_uuid = payload["sub"]
+
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid device token",
+        )
+
+    device = (
+        db.query(Device)
+        .filter(Device.device_uuid == device_uuid)
+        .first()
+    )
+
+    if device is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Device not found",
+        )
+
+    if not device.is_active:
+        raise HTTPException(
+            status_code=401,
+            detail="Device is inactive",
+        )
+
+    return device
 def require_admin(
     current_user: User = Depends(get_current_user),
 ):

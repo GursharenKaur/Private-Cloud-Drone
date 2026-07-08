@@ -5,7 +5,11 @@ from app.schemas.device import DeviceCreate
 import secrets
 import uuid
 
-from app.core.security import hash_password
+from app.core.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+)
 
 def create_device(
     db: Session,
@@ -24,6 +28,7 @@ def create_device(
         firmware_version=device.firmware_version,
         status="offline",
         secret_hash=secret_hash,
+        capabilities=device.capabilities,
     )
 
     db.add(db_device)
@@ -32,10 +37,46 @@ def create_device(
 
     return {
         "device_uuid": device_uuid,
+        "device_name": db_device.device_name,
+        "device_type": db_device.device_type,
         "device_secret": device_secret,
         "message": "Device registered successfully. Save the device secret securely. It will not be shown again.",
     }
 
+def authenticate_device(
+    db: Session,
+    device_uuid: str,
+    device_secret: str,
+):
+    device = (
+        db.query(Device)
+        .filter(Device.device_uuid == device_uuid)
+        .first()
+    )
+
+    if device is None:
+        return None
+
+    if not device.is_active:
+        return None
+
+    if not verify_password(
+        device_secret,
+        device.secret_hash,
+    ):
+        return None
+
+    access_token = create_access_token(
+    data={
+        "sub": device.device_uuid,
+        "type": "device",
+    }
+)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
 
 def get_all_devices(db: Session):
     return db.query(Device).all()

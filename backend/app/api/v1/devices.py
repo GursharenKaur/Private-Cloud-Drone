@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from app.crud.device import update_device_status
 from app.schemas.device_status import DeviceStatusUpdate
-from app.core.security import get_current_user
+from app.core.security import (
+    get_current_user,
+    get_current_device,
+)
 from app.crud.device import (
     create_device,
     get_all_devices,
@@ -12,6 +14,7 @@ from app.crud.device import (
     delete_device,
     count_devices,
     count_online_devices,
+    authenticate_device,
 )
 from app.database.database import get_db
 from app.models.user import User
@@ -19,12 +22,16 @@ from app.schemas.device import (
     DeviceCreate,
     DeviceResponse,
     DeviceRegistrationResponse,
+    DeviceAuthRequest,
+    DeviceAuthResponse,
 )
+from app.core.security import get_current_device
 
 router = APIRouter(
     prefix="/devices",
     tags=["Devices"],
 )
+from app.models.device import Device
 
 
 @router.get("/", response_model=list[DeviceResponse])
@@ -45,6 +52,38 @@ def add_device(
     current_user: User = Depends(get_current_user),
 ):
     return create_device(db, device)
+
+@router.post(
+    "/auth",
+    response_model=DeviceAuthResponse,
+)
+def device_authentication(
+    credentials: DeviceAuthRequest,
+    db: Session = Depends(get_db),
+):
+    token = authenticate_device(
+        db=db,
+        device_uuid=credentials.device_uuid,
+        device_secret=credentials.device_secret,
+    )
+
+    if token is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid device credentials",
+        )
+
+    return token
+
+@router.get(
+    "/me",
+    response_model=DeviceResponse,
+)
+def get_current_authenticated_device(
+    current_device: Device = Depends(get_current_device),
+):
+    return current_device    
+
 @router.get("/stats")
 def device_statistics(
     db: Session = Depends(get_db),
