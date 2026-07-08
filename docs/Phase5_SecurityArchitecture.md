@@ -326,3 +326,205 @@ The system is designed around two independent authentication models:
 - **Edge Devices** authenticate to stream video, send telemetry, upload recordings, receive commands, and communicate with the backend.
 
 This separation ensures that user operations and device operations remain independent while following the same security principles.
+
+---
+
+# 8. Threat Model
+
+The security architecture is designed to protect the system against common security threats that may affect users, edge devices, communication channels, and stored data.
+
+Some of the primary threats considered include:
+
+- Unauthorized user or device access
+- Device impersonation
+- Stolen or expired authentication tokens
+- Unauthorized API requests
+- WebSocket connection misuse
+- Malicious file uploads
+- Unauthorized access to video recordings
+- Data tampering during transmission
+- Database compromise
+- Denial-of-Service (DoS) attacks
+
+To reduce these risks, the system follows a layered security approach that includes authentication, authorization, encrypted communication, input validation, audit logging, and secure data handling.
+
+By identifying these threats during the design phase, appropriate security controls can be implemented throughout the system to minimize potential vulnerabilities.
+
+---
+
+# 9. Authentication Model
+
+Authentication is the process of verifying the identity of users and edge devices before allowing access to the system.
+
+The project uses separate authentication mechanisms for users and edge devices to ensure secure and independent access control.
+
+## User Authentication
+
+Users authenticate through the dashboard using their credentials.
+
+After successful authentication:
+
+- A JWT access token is issued.
+- The token is used to access protected APIs.
+- User permissions are determined based on their assigned role.
+
+## Device Authentication
+
+Every edge device must authenticate with the backend before communicating with the system.
+
+Each device is identified using:
+
+- Device ID / UUID
+- Device Type
+- Authentication Credentials
+
+After successful authentication:
+
+- The device receives a JWT access token.
+- The token is used for secure communication with the backend.
+- The device can only access the services it is authorized to use.
+
+## Authentication Flow
+
+```
+User / Edge Device
+        │
+        ▼
+Authenticate
+        │
+        ▼
+Identity Verified
+        │
+        ▼
+JWT Token Issued
+        │
+        ▼
+Access Protected Resources
+```
+
+By maintaining separate authentication models for users and edge devices, the system remains secure, scalable, and independent of the underlying hardware platform.
+
+---
+
+# 10. Authorization Model
+
+Authorization determines what an authenticated user or edge device is allowed to access within the system.
+
+The project follows **Role-Based Access Control (RBAC)**, where permissions are assigned based on roles instead of individual users or devices.
+
+## User Roles
+
+The system supports the following user roles:
+
+- Administrator
+- Operator
+- Viewer
+
+Each role has a different level of access to system resources and management features.
+
+## Device Permissions
+
+Authenticated edge devices are granted permissions based on their assigned capabilities.
+
+Examples include:
+
+- Live video streaming
+- Telemetry transmission
+- Recording uploads
+- Command reception
+- Heartbeat communication
+
+Devices are only allowed to perform the operations assigned to them and cannot access administrative or user management features.
+
+## Authorization Principle
+
+The system follows the **Least Privilege Principle**, meaning users and devices are granted only the permissions required to perform their intended tasks.
+
+This approach helps prevent unauthorized access while improving the overall security of the platform.
+
+---
+
+# 11. Communication Security
+
+All communication between edge devices, users, and the backend must take place over secure communication channels.
+
+The project uses:
+
+- HTTPS for REST API communication
+- Secure WebSockets (WSS) for signaling
+- WebRTC for peer-to-peer live video streaming
+
+These protocols help protect data from unauthorized access and interception during transmission.
+
+---
+
+# 12. Data Protection
+
+The system is designed to protect both transmitted and stored data.
+
+The following data is considered sensitive:
+
+- User information
+- Device information
+- Video recordings
+- Telemetry data
+- Authentication tokens
+- System configuration
+
+Security measures will ensure that only authorized users and devices can access or modify this information.
+
+---
+
+# 13. Audit Logging
+
+Security-related activities should be recorded to improve system monitoring and traceability.
+
+Examples of logged events include:
+
+- User login
+- Device authentication
+- Recording upload
+- Recording deletion
+- Failed authentication attempts
+- Important administrative actions
+
+Audit logs help monitor system activity and support troubleshooting and security analysis.
+
+---
+
+# 14. Security Roadmap
+
+The security architecture will be implemented in multiple phases.
+
+| Phase | Focus |
+|--------|-------|
+| Phase 5.1 | Identity & Authentication |
+| Phase 5.2 | Authorization |
+| Phase 5.3 | API Security |
+| Phase 5.4 | WebSocket Security |
+| Phase 5.5 | Video Security |
+| Phase 5.6 | Upload Security |
+| Phase 5.7 | Database Hardening |
+| Phase 5.8 | Audit Logging |
+| Phase 5.9 | HTTP Security |
+| Phase 5.10 | Integrity & Encryption |
+
+Each phase builds upon the previous one to create a complete and scalable security framework.
+
+---
+
+# 15. Summary
+
+The security architecture establishes the foundation for building a secure, scalable, and hardware-independent Private Cloud Drone Platform.
+
+Key highlights of the architecture include:
+
+- Hardware-independent edge device model
+- Separate authentication for users and devices
+- Role-based authorization
+- Secure communication channels
+- Protection of sensitive data and recordings
+- Audit logging for important system events
+- Modular security implementation through phased development
+
+This architecture serves as the blueprint for all future security implementations while ensuring that the backend remains adaptable to new edge devices and future system enhancements.
