@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
 
 from app.models.telemetry import Telemetry
-
+from app.schemas.telemetry import TelemetryCreate
+from app.models.device import Device
 
 def get_telemetry_by_id(db: Session, telemetry_id: int):
     return db.query(Telemetry).filter(
@@ -11,6 +12,8 @@ def get_telemetry_by_id(db: Session, telemetry_id: int):
 
 def get_all_telemetry(db: Session):
     return db.query(Telemetry).all()
+
+
 def get_telemetry_by_device(
     db: Session,
     device_id: int,
@@ -30,18 +33,15 @@ def get_latest_telemetry(
         .order_by(Telemetry.timestamp.desc())
         .first()
     )
-from sqlalchemy.orm import Session
-
-from app.models.telemetry import Telemetry
-from app.schemas.telemetry import TelemetryCreate
 
 
 def create_telemetry(
     db: Session,
     telemetry: TelemetryCreate,
+    device: Device,
 ):
     db_telemetry = Telemetry(
-        device_id=telemetry.device_id,
+        device_id=device.id,
         latitude=telemetry.latitude,
         longitude=telemetry.longitude,
         altitude=telemetry.altitude,
@@ -55,8 +55,6 @@ def create_telemetry(
     return db_telemetry
 
 
-def get_all_telemetry(db: Session):
-    return db.query(Telemetry).all()
 
 def get_device_telemetry(db: Session, device_id: int):
     return (
@@ -80,20 +78,6 @@ def delete_telemetry(db: Session, telemetry_id: int):
 
     return telemetry
 
-def delete_telemetry(db: Session, telemetry_id: int):
-    telemetry = (
-        db.query(Telemetry)
-        .filter(Telemetry.id == telemetry_id)
-        .first()
-    )
-
-    if telemetry is None:
-        return None
-
-    db.delete(telemetry)
-    db.commit()
-
-    return telemetry
 
 def update_telemetry(db: Session, telemetry_id: int, telemetry_data):
     telemetry = (

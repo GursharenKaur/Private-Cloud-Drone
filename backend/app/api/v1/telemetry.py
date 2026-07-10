@@ -1,26 +1,28 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from app.core.security import (
+    get_current_user,
+    get_current_device,
+)
+
 from app.crud.telemetry import (
     create_telemetry,
     get_all_telemetry,
-    get_telemetry_by_device,
     get_latest_telemetry,
     get_device_telemetry,
+    update_telemetry,
     delete_telemetry,
-)
-from app.crud.telemetry import update_telemetry
-from app.core.security import get_current_user
-from app.crud.telemetry import (
-    create_telemetry,
-    get_all_telemetry,
-    get_telemetry_by_device,
-    get_latest_telemetry,
 )
 from app.database.database import get_db
 from app.models.user import User
-from app.schemas.telemetry import TelemetryCreate, TelemetryResponse
-from app.crud.telemetry import get_device_telemetry
+from app.models.device import Device
+from app.schemas.telemetry import (
+    TelemetryCreate,
+    TelemetryResponse,
+)
+
+
 router = APIRouter(
     prefix="/telemetry",
     tags=["Telemetry"],
@@ -33,13 +35,9 @@ def get_telemetry(
     current_user: User = Depends(get_current_user),
 ):
     return get_all_telemetry(db)
-@router.get("/device/{device_id}", response_model=list[TelemetryResponse])
-def get_telemetry_by_device(
-    device_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    return get_device_telemetry(db, device_id)
+
+
+
 @router.get(
     "/device/{device_id}/latest",
     response_model=TelemetryResponse,
@@ -58,13 +56,18 @@ def latest_telemetry(
         )
 
     return telemetry
+
 @router.post("/", response_model=TelemetryResponse)
 def add_telemetry(
     telemetry: TelemetryCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_device: Device = Depends(get_current_device),
 ):
-    return create_telemetry(db, telemetry)
+    return create_telemetry(
+        db,
+        telemetry,
+        current_device,
+    )
 
 @router.get(
     "/device/{device_id}",

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from jose import jwt
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 
 from app.core.config import settings
@@ -45,11 +45,19 @@ def create_access_token(data: dict) -> str:
         settings.SECRET_KEY,
         algorithm=settings.ALGORITHM,
     )
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+    
+user_oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/auth/login"
+)
+
+device_oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/devices/auth"
+)
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(user_oauth2_scheme),
     db: Session = Depends(get_db),
 ):
     try:
@@ -61,7 +69,7 @@ def get_current_user(
 
         user_id = int(payload["sub"])
 
-    except Exception:
+    except JWTError:
         raise HTTPException(
             status_code=401,
             detail="Invalid token",
@@ -76,8 +84,10 @@ def get_current_user(
         )
 
     return user
+
+
 def get_current_device(
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(device_oauth2_scheme),
     db: Session = Depends(get_db),
 ):
     try:
@@ -95,7 +105,7 @@ def get_current_device(
 
         device_uuid = payload["sub"]
 
-    except Exception:
+    except JWTError:
         raise HTTPException(
             status_code=401,
             detail="Invalid device token",
@@ -120,6 +130,8 @@ def get_current_device(
         )
 
     return device
+
+
 def require_admin(
     current_user: User = Depends(get_current_user),
 ):
