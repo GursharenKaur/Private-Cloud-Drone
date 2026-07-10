@@ -20,6 +20,8 @@ from app.crud.video import (
     get_video_by_id,
     delete_video,
 )
+from app.core.security import get_current_device
+from app.models.device import Device
 
 router = APIRouter(
     prefix="/videos",
@@ -35,6 +37,7 @@ router = APIRouter(
 async def upload_video(
     video: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_device: Device = Depends(get_current_device),
 ):
     os.makedirs("uploads", exist_ok=True)
 
@@ -49,6 +52,7 @@ async def upload_video(
 
     video_record = create_video(
         db=db,
+        device=current_device,
         filename=unique_filename,
         filepath=file_path,
         file_size=len(file_data),

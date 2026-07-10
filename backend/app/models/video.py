@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
-
+from sqlalchemy import ForeignKey
 from app.database.database import Base
 
 
@@ -8,6 +8,12 @@ class Video(Base):
     __tablename__ = "videos"
 
     id = Column(Integer, primary_key=True, index=True)
+
+    device_id = Column(
+        Integer,
+        ForeignKey("devices.id"),
+        nullable=False,
+    )
 
     filename = Column(String(255), nullable=False)
 

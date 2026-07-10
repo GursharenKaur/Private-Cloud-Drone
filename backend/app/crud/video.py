@@ -1,6 +1,6 @@
 import os
 from sqlalchemy.orm import Session
-
+from app.models.device import Device
 from app.models.video import Video
 
 
@@ -20,6 +20,7 @@ def get_video_by_filename(db: Session, filename: str):
 
 def create_video(
     db: Session,
+    device: Device,
     filename: str,
     filepath: str,
     file_size: int,
@@ -28,6 +29,7 @@ def create_video(
 ):
 
     video = Video(
+        device_id=device.id,
         filename=filename,
         filepath=filepath,
         file_size=file_size,
