@@ -56,15 +56,17 @@ DroneCloudProject/
 
 ---
 
-## Documentation
-
-Detailed documentation is available in the `docs/` directory.
-
 device_uuid:
 f04a2356-0b19-409e-9d85-5ba9ca61617b
 
 device_secret:
 tKYca9EE59I1lAmGm_Qx4HWBFAgLBXVuCNu0F4jQoMc
+
+
+## Documentation
+
+Detailed documentation is available in the `docs/` directory.
+
 
 ---
 
