@@ -92,11 +92,15 @@ def get_current_user(
 
     return user
 
+def authenticate_device_token(
+    token: str,
+    db: Session,
+) -> Device:
+    """
+    Validate a device JWT and return
+    the authenticated Device.
+    """
 
-def get_current_device(
-    token: str = Depends(device_oauth2_scheme),
-    db: Session = Depends(get_db),
-):
     try:
         payload = jwt.decode(
             token,
@@ -137,6 +141,16 @@ def get_current_device(
         )
 
     return device
+
+
+def get_current_device(
+    token: str = Depends(device_oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    return authenticate_device_token(
+        token=token,
+        db=db,
+    )
 
 
 def require_admin(
