@@ -13,6 +13,7 @@ from app.api.v1.users import router as users_router
 from app.core.config import settings
 from app.streaming.websocket import router as websocket_router
 from app.api.videos import router as videos_router
+from app.api.images import router as images_router
 from fastapi.responses import FileResponse
 
 
@@ -39,6 +40,7 @@ app.include_router(devices_router)
 app.include_router(telemetry_router)
 app.include_router(websocket_router)
 app.include_router(videos_router)
+app.include_router(images_router)
 
 @app.get("/")
 def root():

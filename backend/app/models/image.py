@@ -15,10 +15,19 @@ class Image(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
+    device_id = Column(
+        Integer,
+        ForeignKey("devices.id"),
+        nullable=False,
+    )
+
     filename = Column(String(255), nullable=False)
 
     filepath = Column(String(500), nullable=False)
 
     file_size = Column(Integer)
 
-    captured_at = Column(DateTime(timezone=True), server_default=func.now())
+    captured_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
