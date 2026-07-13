@@ -126,71 +126,137 @@ stopBtn.addEventListener("click", () => {
 const wsProtocol =
     location.protocol === "https:" ? "wss" : "ws";
 
-// TEMPORARY - Phase 5.3 testing only
-const deviceToken =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMDRhMjM1Ni0wYjE5LTQwOWUtOWQ4NS01YmE5Y2E2MTYxN2IiLCJ0eXBlIjoiZGV2aWNlIiwiZXhwIjoxNzgzOTI2ODY3fQ.IHGjgSPpfFeSzT5XrJz9P2XKvzG9kkk44waK7DNsCkI";
+// Temporary device credentials
+// Later these will come from the Android app's secure storage.
 
-const wsUrl =
-    `${wsProtocol}://${location.host}/ws/phone_001?token=${deviceToken}`;
+const DEVICE_UUID =
+    "f04a2356-0b19-409e-9d85-5ba9ca61617b";
 
-console.log("WS URL:", wsUrl);
-console.log("Device Token:", deviceToken);
-alert(wsUrl);
-const socket = new WebSocket(wsUrl);
+const DEVICE_SECRET =
+    "tKYca9EE59I1lAmGm_Qx4HWBFAgLBXVuCNu0F4jQoMc";
 
-window.sendIceCandidate = (candidate) => {
+async function authenticateDevice() {
 
-    socket.send(
-        JSON.stringify({
-            target: "dashboard",
-            type: "candidate",
-            sender: "phone_001",
-            candidate: candidate
-        })
-    );
+    console.log("🔐 Authenticating device...");
 
-    console.log("📤 ICE Candidate Sent");
+    const response = await fetch("/devices/auth", {
 
-};
+        method: "POST",
 
-socket.onopen = () => {
+        headers: {
+            "Content-Type": "application/json",
+        },
 
-    console.log("✅ Camera Connected");
+        body: JSON.stringify({
 
-    statusText.textContent = "Connected to backend.";
+            device_uuid: DEVICE_UUID,
+            device_secret: DEVICE_SECRET,
 
-};
+        }),
 
-socket.onmessage = async (event) => {
+    });
 
-    const data = JSON.parse(event.data);
+    if (!response.ok) {
 
-    console.log("📨", data);
-
-    if (data.type === "answer") {
-
-        console.log("🎉 Answer received!");
-
-        await setRemoteAnswer(data.sdp);
-
-        console.log("✅ Phone negotiation completed");
-
-        statusText.textContent =
-            "Connected to Dashboard";
+        throw new Error("Device authentication failed");
 
     }
 
-};
+    const data = await response.json();
 
-socket.onerror = (error) => {
+    console.log("✅ Device authenticated");
 
-    console.log(error);
+    return data.access_token;
 
-};
+}
 
-socket.onclose = () => {
+let socket = null;
 
-    console.log("Disconnected");
+function connectWebSocket(deviceToken) {
 
-};
+    const wsUrl =
+        `${wsProtocol}://${location.host}/ws/phone_001?token=${deviceToken}`;
+
+    console.log("WS URL:", wsUrl);
+    console.log("Device Token:", deviceToken);
+
+    alert(wsUrl);
+
+    socket = new WebSocket(wsUrl);
+
+    window.sendIceCandidate = (candidate) => {
+
+        socket.send(
+            JSON.stringify({
+                target: "dashboard",
+                type: "candidate",
+                sender: "phone_001",
+                candidate: candidate
+            })
+        );
+
+        console.log("📤 ICE Candidate Sent");
+    };
+
+    socket.onopen = () => {
+
+        console.log("✅ Camera Connected");
+
+        statusText.textContent =
+            "Connected to backend.";
+
+    };
+
+    socket.onmessage = async (event) => {
+
+        const data = JSON.parse(event.data);
+
+        console.log("📨", data);
+
+        if (data.type === "answer") {
+
+            console.log("🎉 Answer received!");
+
+            await setRemoteAnswer(data.sdp);
+
+            console.log("✅ Phone negotiation completed");
+
+            statusText.textContent =
+                "Connected to Dashboard";
+        }
+    };
+
+    socket.onerror = (error) => {
+
+        console.log(error);
+
+    };
+
+    socket.onclose = () => {
+
+        console.log("Disconnected");
+
+    };
+}
+
+
 console.log("Start Button Object:", startBtn);
+
+(async () => {
+
+    try {
+
+        const deviceToken = await authenticateDevice();
+
+        connectWebSocket(deviceToken);
+
+    } catch (error) {
+
+        console.error("❌ Device authentication failed:", error);
+
+        statusText.textContent =
+            "Device authentication failed";
+
+    }
+
+})();
