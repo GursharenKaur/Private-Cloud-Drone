@@ -7,31 +7,32 @@ let localStream = null;
 
 export async function startLocalCamera(videoElement) {
 
-    try {
+    console.log("STEP 1");
 
-        localStream = await navigator.mediaDevices.getUserMedia({
+    console.log("navigator =", navigator);
+
+    console.log("mediaDevices =", navigator.mediaDevices);
+
+    const devices =
+        await navigator.mediaDevices.enumerateDevices();
+
+    console.log(devices);
+
+    localStream =
+        await navigator.mediaDevices.getUserMedia({
 
             video: true,
             audio: false
 
         });
 
-        videoElement.srcObject = localStream;
+    console.log("STEP 2");
 
-        console.log("✅ Local camera started");
+    videoElement.srcObject = localStream;
 
-        return localStream;
+    console.log("STEP 3");
 
-    }
-
-    catch(error){
-
-        console.error(error);
-
-        throw error;
-
-    }
-
+    return localStream;
 }
 
 export function stopLocalCamera(){

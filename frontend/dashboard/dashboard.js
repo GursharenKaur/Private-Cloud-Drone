@@ -17,15 +17,100 @@ const startRecordingBtn = document.getElementById("startRecording");
 const stopRecordingBtn = document.getElementById("stopRecording");
 
 // ======================================================
-// WebSocket Connection
+// WebSocket
 // ======================================================
 
 const wsProtocol =
     location.protocol === "https:" ? "wss" : "ws";
 
-const socket = new WebSocket(
-    `${wsProtocol}://${location.host}/ws/dashboard`
-);
+let socket = null;
+
+function connectWebSocket(userToken) {
+
+    const wsUrl =
+        `${wsProtocol}://${location.host}/ws/dashboard?token=${userToken}`;
+
+    console.log("Dashboard WS:", wsUrl);
+
+    socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+
+        console.log("✅ Dashboard Connected");
+
+        statusText.textContent =
+            "Connected to backend.";
+
+    };
+
+    socket.onerror = () => {
+
+        console.error("WebSocket Error");
+
+        statusText.textContent =
+            "Connection Error.";
+
+    };
+
+    socket.onclose = () => {
+
+        console.log("WebSocket Closed");
+
+        statusText.textContent =
+            "Disconnected.";
+
+    };
+
+    socket.onmessage = async (event) => {
+
+        const data = JSON.parse(event.data);
+
+        console.log("📨", data);
+
+        if (data.type === "offer") {
+
+            console.log("🎉 Offer received");
+
+            const peerConnection =
+                createPeerConnection(remoteVideo);
+
+            await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(data.sdp)
+            );
+
+            console.log("✅ Remote Description Set");
+
+            const answer =
+                await peerConnection.createAnswer();
+
+            await peerConnection.setLocalDescription(answer);
+
+            socket.send(
+                JSON.stringify({
+                    target: "phone_001",
+                    sender: "dashboard",
+                    type: "answer",
+                    sdp: answer
+                })
+            );
+
+            console.log("📤 Answer Sent");
+
+        }
+
+        if (data.type === "candidate") {
+
+            console.log("🧊 ICE Candidate");
+
+            await addIceCandidate(
+                data.candidate
+            );
+
+        }
+
+    };
+
+}
 
 // ======================================================
 // Recording Variables
@@ -33,90 +118,6 @@ const socket = new WebSocket(
 
 let mediaRecorder = null;
 let recordedChunks = [];
-
-// ======================================================
-// WebSocket Events
-// ======================================================
-
-socket.onopen = () => {
-
-    console.log("✅ Dashboard Connected");
-
-    statusText.textContent =
-        "Connected to backend.";
-
-};
-
-socket.onerror = () => {
-
-    console.error("WebSocket Error");
-
-    statusText.textContent =
-        "Connection Error.";
-
-};
-
-socket.onclose = () => {
-
-    console.log("WebSocket Closed");
-
-    statusText.textContent =
-        "Disconnected.";
-
-};
-
-// ======================================================
-// WebRTC Signaling
-// ======================================================
-
-socket.onmessage = async (event) => {
-
-    const data = JSON.parse(event.data);
-
-    console.log("📨", data);
-
-    if (data.type === "offer") {
-
-        console.log("🎉 Offer received");
-
-        const peerConnection =
-            createPeerConnection(remoteVideo);
-
-        await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(data.sdp)
-        );
-
-        console.log("✅ Remote Description Set");
-
-        const answer =
-            await peerConnection.createAnswer();
-
-        await peerConnection.setLocalDescription(answer);
-
-        socket.send(
-            JSON.stringify({
-                target: "phone_001",
-                sender: "dashboard",
-                type: "answer",
-                sdp: answer
-            })
-        );
-
-        console.log("📤 Answer Sent");
-
-    }
-
-    if (data.type === "candidate") {
-
-        console.log("🧊 ICE Candidate");
-
-        await addIceCandidate(
-            data.candidate
-        );
-
-    }
-
-};
 
 // ======================================================
 // Start Recording
@@ -161,10 +162,6 @@ startRecordingBtn.onclick = () => {
                 type: "video/webm"
             });
 
-        // ==========================
-        // Upload
-        // ==========================
-
         const formData =
             new FormData();
 
@@ -197,10 +194,6 @@ startRecordingBtn.onclick = () => {
             console.error(error);
 
         }
-
-        // ==========================
-        // Local Download
-        // ==========================
 
         const url =
             URL.createObjectURL(recordedVideo);
@@ -245,3 +238,51 @@ stopRecordingBtn.onclick = () => {
     stopRecordingBtn.disabled = true;
 
 };
+
+// ======================================================
+// Dashboard Authentication
+// ======================================================
+
+async function authenticateDashboard() {
+
+    console.log("🔐 Authenticating dashboard...");
+
+    const formData = new FormData();
+
+    // TEMPORARY TEST USER
+    formData.append("username", "gks@gmail.com");
+    formData.append("password", "gks12345");
+
+    try {
+
+        const response = await fetch("/auth/login", {
+            method: "POST",
+            body: formData
+        });
+
+        if (!response.ok) {
+
+            throw new Error("Dashboard login failed");
+
+        }
+
+        const data = await response.json();
+
+        console.log("✅ Dashboard authenticated");
+
+        connectWebSocket(data.access_token);
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        statusText.textContent =
+            "Dashboard authentication failed.";
+
+    }
+
+}
+
+authenticateDashboard();

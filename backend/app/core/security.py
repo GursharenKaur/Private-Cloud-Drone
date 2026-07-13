@@ -142,6 +142,98 @@ def authenticate_device_token(
 
     return device
 
+# def authenticate_user_token(
+#     token: str,
+#     db: Session,
+# ) -> User:
+#     """
+#     Validate a user JWT and return
+#     the authenticated User.
+#     """
+
+#     try:
+#         payload = jwt.decode(
+#             token,
+#             settings.SECRET_KEY,
+#             algorithms=[settings.ALGORITHM],
+#         )
+
+#     except JWTError:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Invalid user token",
+#         )
+
+#     if payload.get("type") != "user":
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Invalid user token",
+#         )
+
+#     user_id = int(payload["sub"])
+
+#     user = (
+#         db.query(User)
+#         .filter(User.id == user_id)
+#         .first()
+#     )
+
+#     if user is None:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="User not found",
+#         )
+
+#     return user
+def authenticate_user_token(
+    token: str,
+    db: Session,
+) -> User:
+
+    try:
+
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+
+        print("USER PAYLOAD:", payload)
+
+    except JWTError as e:
+
+        print("JWT ERROR:", e)
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid user token",
+        )
+
+    if payload.get("type") != "user":
+
+        print("TYPE FOUND:", payload.get("type"))
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid user token",
+        )
+
+    user_id = int(payload["sub"])
+
+    user = (
+        db.query(User)
+        .filter(User.id == user_id)
+        .first()
+    )
+
+    if user is None:
+
+        raise HTTPException(
+            status_code=401,
+            detail="User not found",
+        )
+
+    return user
 
 def get_current_device(
     token: str = Depends(device_oauth2_scheme),
