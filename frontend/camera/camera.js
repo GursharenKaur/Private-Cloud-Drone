@@ -126,9 +126,17 @@ stopBtn.addEventListener("click", () => {
 const wsProtocol =
     location.protocol === "https:" ? "wss" : "ws";
 
-const socket = new WebSocket(
-    `${wsProtocol}://${location.host}/ws/phone_001`
-);
+// TEMPORARY - Phase 5.3 testing only
+const deviceToken =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMDRhMjM1Ni0wYjE5LTQwOWUtOWQ4NS01YmE5Y2E2MTYxN2IiLCJ0eXBlIjoiZGV2aWNlIiwiZXhwIjoxNzgzOTI2ODY3fQ.IHGjgSPpfFeSzT5XrJz9P2XKvzG9kkk44waK7DNsCkI";
+
+const wsUrl =
+    `${wsProtocol}://${location.host}/ws/phone_001?token=${deviceToken}`;
+
+console.log("WS URL:", wsUrl);
+console.log("Device Token:", deviceToken);
+alert(wsUrl);
+const socket = new WebSocket(wsUrl);
 
 window.sendIceCandidate = (candidate) => {
 

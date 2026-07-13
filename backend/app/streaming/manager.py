@@ -29,7 +29,8 @@ class ConnectionManager:
         self,
         websocket: WebSocket,
         client_id: str,
-        role: str
+        role: str,
+        device=None,
     ):
         """
         Accept a new websocket connection.
@@ -40,6 +41,7 @@ class ConnectionManager:
         self.active_connections[client_id] = {
             "role": role,
             "websocket": websocket,
+            "device": device,
         }
 
         print(f"✅ {client_id} connected as {role}")
