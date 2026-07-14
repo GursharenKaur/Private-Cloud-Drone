@@ -38,10 +38,21 @@ def login(
             status_code=401,
             detail="Invalid email or password",
         )
+    payload = {
+        "sub": str(user.id),
+        "type": "user",
+        "email": user.email,
+        "role": user.role,
+    }
 
+    print("LOGIN PAYLOAD:", payload)
+
+    access_token = create_access_token(payload)
+    
     access_token = create_access_token(
         {
             "sub": str(user.id),
+            "type": "user",
             "email": user.email,
             "role": user.role,
         }

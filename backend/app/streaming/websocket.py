@@ -2,8 +2,8 @@ from fastapi import (
     APIRouter,
     WebSocket,
     WebSocketDisconnect,
-    status,
     HTTPException,
+    status,
 )
 
 from app.database.database import SessionLocal
@@ -11,10 +11,12 @@ from app.database.database import SessionLocal
 from app.core.security import (
     authenticate_device_token,
     authenticate_user_token,
+    authorize_device,
 )
 
 from app.streaming.manager import manager
 from app.streaming.signaling import handle_message
+from app.core.device_capabilities import DeviceCapability
 
 router = APIRouter()
 
@@ -25,22 +27,21 @@ async def websocket_endpoint(
     client_id: str,
 ):
     """
-    Generic websocket endpoint.
-
-    Camera:
-        /ws/phone_001?token=<device_jwt>
+    Authenticated WebSocket endpoint.
 
     Dashboard:
         /ws/dashboard?token=<user_jwt>
+
+    Camera:
+        /ws/phone_001?token=<device_jwt>
     """
 
-    print("🔥 WebSocket endpoint reached")
-
-    print("Query params:", websocket.query_params)
+    print("\n===================================")
+    print("NEW WEBSOCKET CONNECTION")
+    print("Client ID :", client_id)
+    print("===================================\n")
 
     token = websocket.query_params.get("token")
-
-    print("Token:", token)
 
     if not token:
 
@@ -57,22 +58,18 @@ async def websocket_endpoint(
 
     try:
 
-        # ---------------------------------------
-        # Dashboard Authentication (User JWT)
-        # ---------------------------------------
-
         if client_id == "dashboard":
 
-            authenticate_user_token(
+            current_user = authenticate_user_token(
                 token=token,
                 db=db,
             )
 
             role = "dashboard"
 
-        # ---------------------------------------
-        # Device Authentication (Device JWT)
-        # ---------------------------------------
+            print(
+                f"✅ Dashboard authenticated: {current_user.email}"
+            )
 
         else:
 
@@ -81,11 +78,25 @@ async def websocket_endpoint(
                 db=db,
             )
 
+            print("DeviceCapability module:", DeviceCapability.__module__)
+            print("DeviceCapability members:", list(DeviceCapability))
+            print("DeviceCapability dict:", DeviceCapability.__dict__.keys())
+            current_device = authorize_device(
+                current_device,
+                capability=DeviceCapability.VIDEO_STREAM,
+            )
+
             role = "camera"
+
+            print(
+                f"✅ Camera authenticated: {current_device.device_uuid}"
+            )
 
     except HTTPException as e:
 
-        print("Authentication failed:", e.detail)
+        db.close()
+
+        print(f"❌ Authentication failed: {e.detail}")
 
         await websocket.close(
             code=status.WS_1008_POLICY_VIOLATION,
@@ -93,10 +104,6 @@ async def websocket_endpoint(
         )
 
         return
-
-    finally:
-
-        db.close()
 
     await manager.connect(
         websocket=websocket,
@@ -107,20 +114,24 @@ async def websocket_endpoint(
 
     manager.list_clients()
 
+    db.close()
+
     try:
 
         while True:
 
-            data = await websocket.receive_json()
+            message = await websocket.receive_json()
 
-            print(f"[{client_id}] -> {data}")
+            print(f"[{client_id}] -> {message}")
 
             await handle_message(
                 client_id,
-                data,
+                message,
             )
 
     except WebSocketDisconnect:
+
+        print(f"❌ {client_id} disconnected")
 
         manager.disconnect(client_id)
 

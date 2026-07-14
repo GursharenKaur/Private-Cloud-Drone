@@ -170,23 +170,29 @@ startRecordingBtn.onclick = () => {
             recordedVideo,
             "recording.webm"
         );
+        formData.append(
+            "device_uuid",
+            "f04a2356-0b19-409e-9d85-5ba9ca61617b"
+        );
 
         try {
+            const token = localStorage.getItem("access_token");
 
-            const response =
-                await fetch("/videos/upload", {
+            const response = await fetch("/videos/upload", {
 
-                    method: "POST",
+                method: "POST",
 
-                    body: formData
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
 
-                });
+                body: formData
 
-            const result =
-                await response.json();
+            });
+
+            const result = await response.json();
 
             console.log(result);
-
         }
 
         catch (error) {
@@ -268,10 +274,15 @@ async function authenticateDashboard() {
 
         const data = await response.json();
 
+        // Save JWT for future authenticated requests
+        localStorage.setItem(
+            "access_token",
+            data.access_token
+        );
+
         console.log("✅ Dashboard authenticated");
 
         connectWebSocket(data.access_token);
-
     }
 
     catch (error) {

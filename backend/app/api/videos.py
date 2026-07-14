@@ -8,6 +8,7 @@ from fastapi import (
     File,
     Depends,
     HTTPException,
+    Form,
 )
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -20,7 +21,8 @@ from app.crud.video import (
     get_video_by_id,
     delete_video,
 )
-from app.core.security import get_current_device
+from app.core.security import get_current_user
+from app.models.user import User
 from app.models.device import Device
 
 router = APIRouter(
@@ -34,11 +36,26 @@ router = APIRouter(
 # =====================================================
 
 @router.post("/upload")
+
+
 async def upload_video(
     video: UploadFile = File(...),
+    device_uuid: str = Form(...),
     db: Session = Depends(get_db),
-    current_device: Device = Depends(get_current_device),
+    current_user = Depends(get_current_user),
 ):
+    device = (
+        db.query(Device)
+        .filter(Device.device_uuid == device_uuid)
+        .first()
+)
+
+    if device is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Device not found",
+    )
+
     os.makedirs("uploads", exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -52,7 +69,7 @@ async def upload_video(
 
     video_record = create_video(
         db=db,
-        device=current_device,
+        device=device,
         filename=unique_filename,
         filepath=file_path,
         file_size=len(file_data),

@@ -41,7 +41,7 @@ class Device(Base):
     capabilities = Column(
         Text,
         nullable=False,
-        default="video,telemetry,commands",
+        default="video_stream,video_upload,telemetry,commands",
     )
 
     is_active = Column(
