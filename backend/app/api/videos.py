@@ -25,6 +25,10 @@ from app.core.security import (
     get_current_user,
     authorize_device,
 )
+from app.core.video_authorization import (
+    authorize_video,
+    resolve_video_path,
+)
 
 from app.models.user import User
 from app.models.device import Device
@@ -41,25 +45,23 @@ router = APIRouter(
 # =====================================================
 
 @router.post("/upload")
-
-
 async def upload_video(
     video: UploadFile = File(...),
     device_uuid: str = Form(...),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     device = (
         db.query(Device)
         .filter(Device.device_uuid == device_uuid)
         .first()
-)
+    )
 
     if device is None:
         raise HTTPException(
             status_code=404,
             detail="Device not found",
-    )
+        )
 
     device = authorize_device(
         device,
@@ -99,6 +101,7 @@ async def upload_video(
 @router.get("/", response_model=list[VideoResponse])
 def get_videos(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return get_all_videos(db)
 
@@ -111,26 +114,18 @@ def get_videos(
 def stream_video(
     video_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     video = get_video_by_id(db, video_id)
+    video = authorize_video(video)
 
-    if video is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Video not found",
-        )
+    file_path = resolve_video_path(video)
 
-    if not os.path.exists(video.filepath):
-        raise HTTPException(
-            status_code=404,
-            detail="Video file not found",
-        )
-
-    return FileResponse(
-        path=video.filepath,
-        media_type="video/webm",
-        filename=video.filename,
-    )
+return FileResponse(
+    path=str(file_path),
+    media_type="video/webm",
+    filename=video.filename,
+)
 
 
 # =====================================================
@@ -141,7 +136,16 @@ def stream_video(
 def delete_video_endpoint(
     video_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    video = get_video_by_id(db, video_id)
+    video = authorize_video(video)
+
+    delete_video(db, video.id)
+
+    return {
+        "message": "Video deleted successfully"
+    }
     video = delete_video(db, video_id)
 
     if video is None:
