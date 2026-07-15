@@ -572,6 +572,6 @@ Authentication and authorization are now fully separated, making the security mo
 
 # Phase Status
 
-**Phase 5.4 — Completed ✅**
+**Phase 5.4 — Completed**
 
 The Drone Cloud backend now enforces capability-based authorization across protected communication channels and establishes a secure foundation for future endpoint protection and fine-grained access control.
