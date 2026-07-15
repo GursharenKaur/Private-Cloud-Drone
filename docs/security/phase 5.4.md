@@ -2,42 +2,46 @@
 
 ## Objective
 
-After completing Phase 5.3 (Device Authentication & Authorization), the next objective was to secure every sensitive backend endpoint using authorization checks.
+After completing **Phase 5.3 (Device Authentication & Authorization)**, the next objective was to secure every sensitive backend endpoint using authorization checks.
 
 Authentication verifies **who** the requester is.
 
 Authorization verifies **what** the authenticated requester is allowed to do.
 
-This phase introduced a centralized authorization layer based on:
+This phase introduced a centralized authorization framework that is now enforced across both **REST APIs** and **WebSocket connections**.
 
-- Device status
+The authorization framework validates:
+
+- Device active status
+- Device operational status
 - Device capabilities
-- User roles
+- User authentication
 - JWT identity
 
-This architecture ensures that even a valid authenticated device cannot perform operations outside its assigned permissions.
+By centralizing authorization logic, every protected endpoint now follows the same security pipeline, reducing duplicated code and ensuring consistent access control throughout the backend.
 
 ---
 
 # Architecture
 
 ```
-
                  JWT Authentication
-│
-▼
-Authenticated Device
-│
-▼
-Authorization Layer
-│
-├── Device Active?
-├── Required Capability?
-├── Allowed Status?
-│
-▼
-Protected API Endpoint
-
+                        │
+                        ▼
+            Authenticated User / Device
+                        │
+                        ▼
+             Central Authorization Layer
+                        │
+          ┌─────────────┼─────────────┐
+          │             │             │
+          ▼             ▼             ▼
+   Device Active?   Device Status?   Required Capability?
+          │             │             │
+          └─────────────┼─────────────┘
+                        ▼
+              Protected REST Endpoint
+                 or WebSocket Route
 ```
 
 Every protected endpoint now passes through the authorization pipeline before business logic is executed.
@@ -53,9 +57,7 @@ A centralized enumeration was introduced for every supported device permission.
 File
 
 ```
-
 backend/app/core/device_capabilities.py
-
 ```
 
 Implementation
@@ -85,25 +87,47 @@ authorize_device(...)
 It performs multiple validation stages sequentially.
 
 ```
-
 Authenticated Device
-│
-├── require_active_device()
-│
-├── require_device_status()
-│
-├── require_device_capability()
-│
-▼
+        │
+        ▼
+require_active_device()
+        │
+        ▼
+require_device_status()
+        │
+        ▼
+require_device_capability()
+        │
+        ▼
 Authorized Device
-
 ```
+
+This centralized design ensures that every protected endpoint follows identical authorization rules.
+
+---
+
+# Endpoint Authorization Strategy
+
+Phase 5.4 extended authorization beyond WebSocket connections.
+
+Every protected REST endpoint now invokes the centralized authorization function before executing business logic.
+
+Protected endpoints include:
+
+| Endpoint | Required Capability |
+|----------|---------------------|
+| POST /videos/upload | VIDEO_UPLOAD |
+| POST /images/upload | VIDEO_UPLOAD |
+| POST /telemetry | TELEMETRY |
+| WebSocket `/ws/{client}` | VIDEO_STREAM |
+
+Dashboard endpoints continue to require authenticated user JWTs.
 
 ---
 
 # Active Device Verification
 
-Every protected endpoint first verifies that the device is enabled.
+Every protected endpoint first verifies that the device is active.
 
 ```python
 require_active_device(device)
@@ -112,25 +136,22 @@ require_active_device(device)
 Validation
 
 ```
-
 device.is_active == True
-
 ```
 
-Rejected devices receive:
+Rejected devices receive
 
 ```
-
 HTTP 403
-Device is inactive
 
+Device is inactive
 ```
 
 ---
 
 # Device Status Verification
 
-Certain endpoints may require a specific operational state.
+Certain endpoints may require a specific operational status.
 
 Example
 
@@ -152,63 +173,55 @@ Possible statuses
 
 # Capability-Based Authorization
 
-Every device stores its supported capabilities.
+Every registered device stores its supported capabilities.
 
-Database example
+Example
 
 ```
-
 video_stream
 video_upload
 telemetry
 commands
-
 ```
 
-Before executing an endpoint, the backend verifies that the requested capability exists.
+Before executing protected operations, the backend verifies that the requested capability exists.
 
 Example
 
 ```python
 authorize_device(
     current_device,
-    capability=DeviceCapability.VIDEO_STREAM
+    capability=DeviceCapability.VIDEO_STREAM,
 )
 ```
 
-If missing
+If the capability is missing
 
 ```
-
 HTTP 403
 
 Device lacks required capability
-
 ```
 
 ---
 
 # Updated Capability Validation
 
-The authorization logic was improved to support both PostgreSQL storage formats.
+Capability validation was enhanced to support multiple PostgreSQL storage formats.
 
-Supported
+Supported formats
 
 ```
-
 video_stream,video_upload
-
 ```
 
 and
 
 ```
-
 {video_stream,video_upload}
-
 ```
 
-The validator now normalizes capabilities before comparison.
+Capabilities are normalized before comparison.
 
 Example
 
@@ -220,28 +233,28 @@ This guarantees compatibility across different database representations.
 
 ---
 
-# Protected WebSocket Endpoint
+# Protected Communication Channels
 
-The streaming WebSocket now performs authorization before allowing a connection.
+## WebSocket Streaming
+
+Before a camera device can establish a WebSocket connection, it passes through the authorization pipeline.
 
 Connection flow
 
 ```
-
 Phone
-│
-▼
+ │
+ ▼
 JWT Validation
-│
-▼
+ │
+ ▼
 Active Device Check
-│
-▼
+ │
+ ▼
 Capability Check
-│
-▼
+ │
+ ▼
 WebSocket Accepted
-
 ```
 
 Implementation
@@ -260,6 +273,29 @@ current_device = authorize_device(
 
 ---
 
+## REST API Protection
+
+Every device-facing REST endpoint now performs authorization before executing endpoint logic.
+
+General flow
+
+```
+Device Request
+        │
+        ▼
+JWT Authentication
+        │
+        ▼
+authorize_device()
+        │
+        ▼
+Business Logic
+```
+
+This provides identical authorization behavior across both REST APIs and WebSocket communication.
+
+---
+
 # Dashboard Authorization
 
 Dashboard users are authenticated independently using user JWTs.
@@ -267,21 +303,19 @@ Dashboard users are authenticated independently using user JWTs.
 Flow
 
 ```
-
 User Login
-│
-▼
+      │
+      ▼
 JWT Validation
-│
-▼
+      │
+      ▼
 User Lookup
-│
-▼
+      │
+      ▼
 Dashboard Access
-
 ```
 
-Only authenticated users may establish the dashboard WebSocket.
+Only authenticated users may establish the dashboard WebSocket or access protected dashboard APIs.
 
 ---
 
@@ -294,19 +328,17 @@ During development several issues were encountered.
 ## Issue 1
 
 ```
-
 ImportError:
 DeviceCapability
-
 ```
 
 Cause
 
-The container was loading an outdated file.
+The Docker container was loading an outdated version of the file.
 
 Resolution
 
-- Updated device_capabilities.py
+- Updated `device_capabilities.py`
 - Restarted backend container
 - Verified container filesystem
 
@@ -315,28 +347,24 @@ Resolution
 ## Issue 2
 
 ```
-
 AttributeError
 
 VIDEO_STREAM
-
 ```
 
 Cause
 
-Old enum values still existed.
+The backend was using an outdated enum definition.
 
 Resolution
 
-Updated enum
+Updated the enum to
 
 ```
-
 VIDEO_STREAM
 VIDEO_UPLOAD
 TELEMETRY
 COMMANDS
-
 ```
 
 ---
@@ -344,46 +372,40 @@ COMMANDS
 ## Issue 3
 
 ```
-
 403 Forbidden
 
 Device lacks required capability
-
 ```
 
 Cause
 
-Authorization failed because PostgreSQL returned capabilities using different formats.
+PostgreSQL stored capabilities using different formats.
 
-Example
+Examples
 
 ```
-
 video_stream,video_upload
-
 ```
 
 vs
 
 ```
-
 {video_stream,video_upload}
-
 ```
 
 Resolution
 
-Capability normalization added before comparison.
+Capability normalization was introduced before comparison.
 
 ---
 
 ## Issue 4
 
-Container running stale code
+Docker Container Running Stale Code
 
 Resolution
 
-Verified inside Docker
+Verified the actual code inside the running container using
 
 ```bash
 docker exec -it drone_backend cat /app/app/core/device_capabilities.py
@@ -392,10 +414,10 @@ docker exec -it drone_backend cat /app/app/core/device_capabilities.py
 and
 
 ```bash
-docker exec -it drone_backend grep "Required capability" ...
+docker exec -it drone_backend grep "Required capability" /app/app/core/security.py
 ```
 
-This ensured the backend was executing the latest implementation.
+This confirmed the backend was executing the latest implementation.
 
 ---
 
@@ -415,78 +437,76 @@ FROM devices;
 Result
 
 ```
-
 video_stream
 video_upload
 telemetry
 commands
-
 ```
 
-All registered devices were updated to the new capability model.
+All registered devices were successfully updated to the new capability model.
 
 ---
 
 # Security Improvements
 
-This phase introduced:
+This phase introduced
+
+✔ Centralized authorization pipeline
+
+✔ Capability-based REST API protection
+
+✔ Capability-based WebSocket protection
 
 ✔ Active device verification
 
-✔ Capability-based authorization
-
 ✔ Device status validation
-
-✔ WebSocket authorization
-
-✔ Dashboard authorization
-
-✔ Centralized authorization pipeline
 
 ✔ Enum-based capability management
 
 ✔ Normalized capability parsing
+
+✔ Shared authorization framework reused across the backend
 
 ---
 
 # Authorization Flow
 
 ```
-
 Device
-│
-▼
+   │
+   ▼
 Authenticate JWT
-│
-▼
+   │
+   ▼
 Load Device
-│
-▼
+   │
+   ▼
 Check Active
-│
-▼
+   │
+   ▼
 Check Status
-│
-▼
+   │
+   ▼
 Check Capability
-│
-▼
+   │
+   ▼
 Endpoint Execution
-
 ```
 
 ---
 
 # Protected Operations
 
-Current capability mapping
-
-| Capability | Operation |
-|------------|-----------|
-| VIDEO_STREAM | Live video streaming |
-| VIDEO_UPLOAD | Video uploads |
-| TELEMETRY | Telemetry transmission |
-| COMMANDS | Command execution |
+| Endpoint | Authentication | Authorization |
+|-----------|----------------|---------------|
+| POST /videos/upload | Device JWT | VIDEO_UPLOAD |
+| POST /images/upload | Device JWT | VIDEO_UPLOAD |
+| POST /telemetry | Device JWT | TELEMETRY |
+| GET /telemetry | User JWT | Authenticated User |
+| PUT /telemetry | User JWT | Authenticated User |
+| DELETE /telemetry | User JWT | Authenticated User |
+| Camera WebSocket | Device JWT | VIDEO_STREAM |
+| Dashboard WebSocket | User JWT | Authenticated User |
 
 ---
 
@@ -516,6 +536,38 @@ Current capability mapping
 
 ---
 
+## Video Upload Authorization
+
+✔ Passed
+
+Authorized devices with the `VIDEO_UPLOAD` capability successfully uploaded videos.
+
+---
+
+## Image Upload Authorization
+
+✔ Passed
+
+Authorized devices successfully uploaded images.
+
+---
+
+## Telemetry Authorization
+
+✔ Passed
+
+Devices with the `TELEMETRY` capability successfully submitted telemetry.
+
+---
+
+## REST Endpoint Authorization
+
+✔ Passed
+
+Every protected REST endpoint now executes centralized authorization before business logic.
+
+---
+
 ## Unauthorized Device Rejection
 
 ✔ Passed
@@ -523,10 +575,10 @@ Current capability mapping
 Returned
 
 ```
-
 HTTP 403
-
 ```
+
+for devices lacking the required capability.
 
 ---
 
@@ -534,7 +586,7 @@ HTTP 403
 
 ✔ Passed
 
-Device successfully connected to WebSocket.
+Authorized devices successfully connected to the protected WebSocket endpoint.
 
 ---
 
@@ -550,28 +602,41 @@ Dashboard authenticated and connected successfully.
 
 ✔ Passed
 
-Authenticated camera successfully streamed video to the dashboard.
+Authenticated camera successfully streamed live video to the dashboard.
 
 ---
 
 # Final Outcome
 
-Phase 5.4 completed the backend authorization layer.
+Phase 5.4 completed the centralized authorization layer for the Drone Cloud backend.
 
-The server now guarantees that:
+Every protected communication channel now passes through a shared authorization pipeline before executing application logic.
 
-- every device is authenticated
-- every device is active
-- every operation is capability checked
-- every WebSocket connection is authorized
+The backend now guarantees that
+
+- every device is authenticated using JWTs
+- every device is verified to be active
+- device status can be validated when required
+- every protected REST endpoint enforces capability-based authorization
+- every WebSocket connection enforces capability-based authorization
 - unauthorized devices are rejected before accessing protected resources
+- authorization logic is centralized, reusable, and consistent throughout the backend
 
-Authentication and authorization are now fully separated, making the security model modular, scalable, and suitable for future edge devices such as Raspberry Pi, Jetson Nano, ESP32, or custom drone hardware.
+By separating authentication from authorization, the backend now follows a layered security architecture that is easier to maintain, extend, and scale for future edge devices such as Raspberry Pi, Jetson Nano, ESP32, or custom drone hardware.
 
 ---
 
 # Phase Status
 
-**Phase 5.4 — Completed**
+**Phase 5.4 — Completed ✅**
 
-The Drone Cloud backend now enforces capability-based authorization across protected communication channels and establishes a secure foundation for future endpoint protection and fine-grained access control.
+## Deliverables
+
+- Centralized authorization framework
+- Device capability enumeration
+- Active device validation
+- Device status validation
+- Capability-based REST API protection
+- Capability-based WebSocket protection
+- Shared authorization utilities
+- Comprehensive endpoint authorization testing

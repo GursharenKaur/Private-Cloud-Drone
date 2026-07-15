@@ -9,7 +9,12 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_device
+from app.core.security import (
+    get_current_device,
+    authorize_device,
+)
+from app.core.device_capabilities import DeviceCapability
+
 from app.crud.image import (
     create_image,
     get_all_images,
@@ -29,12 +34,26 @@ UPLOAD_DIR.mkdir(
     exist_ok=True,
 )
 
+
 @router.post("/upload")
 async def upload_image(
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_device: Device = Depends(get_current_device),
 ):
+    """
+    Upload an image from an authenticated device.
+
+    Authorization:
+        - Device must be active.
+        - Device must have VIDEO_UPLOAD capability.
+    """
+
+    current_device = authorize_device(
+        current_device,
+        capability=DeviceCapability.VIDEO_UPLOAD,
+    )
+
     if not image.content_type.startswith("image/"):
         raise HTTPException(
             status_code=400,

@@ -21,9 +21,14 @@ from app.crud.video import (
     get_video_by_id,
     delete_video,
 )
-from app.core.security import get_current_user
+from app.core.security import (
+    get_current_user,
+    authorize_device,
+)
+
 from app.models.user import User
 from app.models.device import Device
+from app.core.device_capabilities import DeviceCapability
 
 router = APIRouter(
     prefix="/videos",
@@ -54,6 +59,11 @@ async def upload_video(
         raise HTTPException(
             status_code=404,
             detail="Device not found",
+    )
+
+    device = authorize_device(
+        device,
+        capability=DeviceCapability.VIDEO_UPLOAD,
     )
 
     os.makedirs("uploads", exist_ok=True)
