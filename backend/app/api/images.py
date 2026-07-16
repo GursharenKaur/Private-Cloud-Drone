@@ -4,22 +4,35 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
-    HTTPException,
     UploadFile,
 )
 from sqlalchemy.orm import Session
+
+from app.core.logging import log_security_event
 
 from app.core.security import (
     get_current_device,
     authorize_device,
 )
+
 from app.core.device_capabilities import DeviceCapability
+
+from app.core.upload_security import (
+    validate_file_extension,
+    validate_mime_type,
+    validate_file_size,
+    generate_secure_filename,
+    ALLOWED_IMAGE_EXTENSIONS,
+    ALLOWED_IMAGE_MIME_TYPES,
+    MAX_IMAGE_FILE_SIZE,
+)
 
 from app.crud.image import (
     create_image,
     get_all_images,
     get_image_by_id,
 )
+
 from app.database.database import get_db
 from app.models.device import Device
 
@@ -34,6 +47,10 @@ UPLOAD_DIR.mkdir(
     exist_ok=True,
 )
 
+
+# =====================================================
+# Upload Image
+# =====================================================
 
 @router.post("/upload")
 async def upload_image(
@@ -54,15 +71,31 @@ async def upload_image(
         capability=DeviceCapability.VIDEO_UPLOAD,
     )
 
-    if not image.content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=400,
-            detail="Only image files are allowed",
-        )
+    # ------------------------------------------
+    # Upload Security
+    # ------------------------------------------
 
-    filename = (
-        f"{current_device.device_uuid}_"
-        f"{image.filename}"
+    validate_file_extension(
+        image,
+        ALLOWED_IMAGE_EXTENSIONS,
+    )
+
+    validate_mime_type(
+        image,
+        ALLOWED_IMAGE_MIME_TYPES,
+    )
+
+    await validate_file_size(
+        image,
+        MAX_IMAGE_FILE_SIZE,
+    )
+
+    # ------------------------------------------
+    # Store File
+    # ------------------------------------------
+
+    filename = generate_secure_filename(
+        image.filename,
     )
 
     filepath = UPLOAD_DIR / filename
@@ -78,8 +111,53 @@ async def upload_image(
         file_size=filepath.stat().st_size,
     )
 
+    # ------------------------------------------
+    # Audit Logging
+    # ------------------------------------------
+
+    log_security_event(
+        f"IMAGE_UPLOAD_SUCCESS | "
+        f"image_id={image_record.id} | "
+        f"filename={image_record.filename} | "
+        f"device_uuid={current_device.device_uuid}"
+    )
+
     return {
         "message": "Image uploaded successfully",
         "image_id": image_record.id,
         "filename": image_record.filename,
     }
+
+
+# =====================================================
+# Get All Images
+# =====================================================
+
+@router.get("/")
+def get_images(
+    db: Session = Depends(get_db),
+):
+    return get_all_images(db)
+
+
+# =====================================================
+# Get Image By ID
+# =====================================================
+
+@router.get("/{image_id}")
+def get_image(
+    image_id: int,
+    db: Session = Depends(get_db),
+):
+    image = get_image_by_id(
+        db,
+        image_id,
+    )
+
+    if image is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Image not found",
+        )
+
+    return image

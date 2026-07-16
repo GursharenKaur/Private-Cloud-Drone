@@ -1,3 +1,4 @@
+from app.core.logging import log_security_event
 from sqlalchemy.orm import Session
 
 from app.models.device import Device
@@ -55,23 +56,52 @@ def authenticate_device(
     )
 
     if device is None:
+
+        log_security_event(
+            f"DEVICE_AUTH_FAILED | "
+            f"device_uuid={device_uuid} | "
+            f"reason=device_not_found"
+        )
+
         return None
 
     if not device.is_active:
+
+        log_security_event(
+            f"DEVICE_AUTH_FAILED | "
+            f"device_uuid={device.device_uuid} | "
+            f"device_name={device.device_name} | "
+            f"reason=device_inactive"
+        )
+
         return None
 
     if not verify_password(
         device_secret,
         device.secret_hash,
     ):
+
+        log_security_event(
+            f"DEVICE_AUTH_FAILED | "
+            f"device_uuid={device.device_uuid} | "
+            f"device_name={device.device_name} | "
+            f"reason=invalid_secret"
+        )
+
         return None
 
     access_token = create_access_token(
-    data={
-        "sub": device.device_uuid,
-        "type": "device",
-    }
-)
+        data={
+            "sub": device.device_uuid,
+            "type": "device",
+        }
+    )
+
+    log_security_event(
+        f"DEVICE_AUTH_SUCCESS | "
+        f"device_uuid={device.device_uuid} | "
+        f"device_name={device.device_name}"
+    )
 
     return {
         "access_token": access_token,

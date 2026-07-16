@@ -68,7 +68,9 @@ def get_current_user(
         )
         print("Decoded payload:", payload)
 
-    except JWTError:
+    except JWTError as e:
+        print("JWT ERROR:", e)
+
         raise HTTPException(
             status_code=401,
             detail="Invalid token",
