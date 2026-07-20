@@ -29,7 +29,8 @@ class Settings(BaseSettings):
 
     LOGIN_MAX_FAILURES: int = 5
     LOGIN_LOCKOUT_MINUTES: int = 15
-
+    DEVICE_AUTH_MAX_FAILURES: int = 5
+    DEVICE_AUTH_LOCKOUT_MINUTES: int = 15
     # Storage
     UPLOAD_DIR: str = "/app/uploads"
     VIDEO_DIR: str = "/app/videos"

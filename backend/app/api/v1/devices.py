@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
+from app.core.device_auth_rate_limit import (
+    is_device_auth_locked,
+    record_failed_device_auth,
+    reset_device_auth_failures,
+)
 from app.core.logging import log_security_event
 from app.core.security import (
     get_current_user,
@@ -72,17 +76,44 @@ def device_authentication(
     credentials: DeviceAuthRequest,
     db: Session = Depends(get_db),
 ):
+    # Check whether authentication attempts for this
+    # device UUID are temporarily locked.
+    if is_device_auth_locked(
+        db=db,
+        device_uuid=credentials.device_uuid,
+    ):
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "Too many failed device authentication attempts. "
+                "Please try again later."
+            ),
+        )
+
+    # Existing device authentication logic remains unchanged.
     token = authenticate_device(
         db=db,
         device_uuid=credentials.device_uuid,
         device_secret=credentials.device_secret,
     )
 
+    # Record failed authentication attempt.
     if token is None:
+        record_failed_device_auth(
+            db=db,
+            device_uuid=credentials.device_uuid,
+        )
+
         raise HTTPException(
             status_code=401,
             detail="Invalid device credentials",
         )
+
+    # Successful authentication clears previous failures.
+    reset_device_auth_failures(
+        db=db,
+        device_uuid=credentials.device_uuid,
+    )
 
     return token
 
