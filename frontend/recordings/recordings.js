@@ -10,9 +10,21 @@ async function loadRecordings() {
 
     try {
 
-        const response = await fetch("/videos/");
-        const videos = await response.json();
+        const token = localStorage.getItem("access_token");
 
+        const response = await fetch("/videos/", {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                `Failed to load recordings: ${response.status}`
+            );
+        }
+
+        const videos = await response.json();
         // ==========================
         // Dashboard Statistics
         // ==========================

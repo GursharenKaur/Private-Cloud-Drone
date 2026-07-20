@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
 
+    LOGIN_MAX_FAILURES: int = 5
+    LOGIN_LOCKOUT_MINUTES: int = 15
+
     # Storage
     UPLOAD_DIR: str = "/app/uploads"
     VIDEO_DIR: str = "/app/videos"

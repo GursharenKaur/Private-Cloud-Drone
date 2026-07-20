@@ -1,3 +1,8 @@
+from app.core.login_rate_limit import (
+    is_user_locked,
+    record_failed_login,
+    reset_login_failures,
+)
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -37,11 +42,33 @@ def login(
             status_code=401,
             detail="Invalid email or password",
         )
+    if is_user_locked(
+        db=db,
+        username=user.email,
+    ):
+
+        log_security_event(
+            f"USER_ACCOUNT_LOCKED | "
+            f"user_id={user.id} | "
+            f"email={user.email}"
+        )
+
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "Too many failed login attempts. "
+                "Please try again later."
+            ),
+        )
 
     if not verify_password(
         form_data.password,
         user.password_hash,
     ):
+        record_failed_login(
+            db=db,
+            username=user.email,
+        )
 
         log_security_event(
             f"USER_LOGIN_FAILED | "
@@ -65,6 +92,10 @@ def login(
     print("LOGIN PAYLOAD:", payload)
 
     access_token = create_access_token(payload)
+    reset_login_failures(
+        db=db,
+        username=user.email,
+    )
 
     log_security_event(
         f"USER_LOGIN_SUCCESS | "
