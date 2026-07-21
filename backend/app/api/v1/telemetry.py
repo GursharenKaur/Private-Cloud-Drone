@@ -6,7 +6,7 @@ from app.core.security import (
     get_current_device,
     authorize_device,
 )
-
+from app.core.telemetry_security import validate_telemetry
 from app.core.device_capabilities import DeviceCapability
 
 from app.crud.telemetry import (
@@ -92,6 +92,9 @@ def add_telemetry(
         current_device,
         capability=DeviceCapability.TELEMETRY,
     )
+
+    # Validate telemetry values
+    validate_telemetry(telemetry)
 
     return create_telemetry(
         db,

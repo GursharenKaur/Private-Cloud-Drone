@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Form
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.core.device_auth_rate_limit import (
     is_device_auth_locked,
@@ -73,14 +74,14 @@ def add_device(
     response_model=DeviceAuthResponse,
 )
 def device_authentication(
-    credentials: DeviceAuthRequest,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
     # Check whether authentication attempts for this
     # device UUID are temporarily locked.
     if is_device_auth_locked(
         db=db,
-        device_uuid=credentials.device_uuid,
+        device_uuid=form_data.username,
     ):
         raise HTTPException(
             status_code=429,
@@ -93,15 +94,15 @@ def device_authentication(
     # Existing device authentication logic remains unchanged.
     token = authenticate_device(
         db=db,
-        device_uuid=credentials.device_uuid,
-        device_secret=credentials.device_secret,
+        device_uuid=form_data.username, 
+        device_secret=form_data.password,
     )
 
     # Record failed authentication attempt.
     if token is None:
         record_failed_device_auth(
             db=db,
-            device_uuid=credentials.device_uuid,
+            device_uuid=form_data.username,
         )
 
         raise HTTPException(
@@ -111,10 +112,9 @@ def device_authentication(
 
     # Successful authentication clears previous failures.
     reset_device_auth_failures(
-        db=db,
-        device_uuid=credentials.device_uuid,
-    )
-
+    db=db,
+    device_uuid=form_data.username,
+)
     return token
 
 
